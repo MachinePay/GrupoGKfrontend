@@ -7,6 +7,8 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  List,
   Pencil,
   PlusCircle,
   Trash2,
@@ -91,6 +93,7 @@ const TIPO_OPTIONS = [
 const INITIAL_FORM = {
   titulo: "",
   descricao: "",
+  origem: "",
   empresaId: "",
   data: "",
   valor: "",
@@ -105,6 +108,7 @@ function AgendaForm({ item, onCancel, onSuccess }) {
   const [form, setForm] = useState(() => ({
     titulo: item?.titulo ?? INITIAL_FORM.titulo,
     descricao: item?.descricao ?? INITIAL_FORM.descricao,
+    origem: item?.origem ?? INITIAL_FORM.origem,
     empresaId: item?.empresaId
       ? String(item.empresaId)
       : INITIAL_FORM.empresaId,
@@ -156,6 +160,7 @@ function AgendaForm({ item, onCancel, onSuccess }) {
       empresaId: Number(form.empresaId),
       valor: Number(form.valor),
       descricao: form.descricao || undefined,
+      origem: form.origem || undefined,
     });
   }
 
@@ -246,17 +251,25 @@ function AgendaForm({ item, onCancel, onSuccess }) {
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-          Descrição
-        </label>
-        <textarea
-          value={form.descricao}
-          onChange={set("descricao")}
-          rows={3}
-          className="input-base resize-none"
-          placeholder="Detalhes adicionais, observações ou contexto operacional"
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Input
+          label="Origem"
+          value={form.origem}
+          onChange={set("origem")}
+          placeholder="Ex: Cliente João, Loja Interlagos, Parceiro X"
         />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+            Descrição
+          </label>
+          <textarea
+            value={form.descricao}
+            onChange={set("descricao")}
+            rows={3}
+            className="input-base resize-none"
+            placeholder="Detalhes adicionais, observações ou contexto operacional"
+          />
+        </div>
       </div>
 
       {mutation.isError && (
@@ -475,6 +488,154 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
   );
 }
 
+const MONTH_NAMES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+const WEEKDAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function CalendarGrid({
+  year,
+  month,
+  itens,
+  onPrevMonth,
+  onNextMonth,
+  onBaixa,
+  onEdit,
+}) {
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const byDay = useMemo(() => {
+    const map = {};
+    for (const item of itens) {
+      const d = new Date(item.data);
+      const key = d.getUTCDate();
+      if (!map[key]) map[key] = [];
+      map[key].push(item);
+    }
+    return map;
+  }, [itens]);
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const todayDate = new Date();
+  const isCurrentMonth =
+    todayDate.getFullYear() === year && todayDate.getMonth() === month;
+
+  return (
+    <div className="glass card-shadow rounded-2xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+        <button
+          onClick={onPrevMonth}
+          className="btn-ghost inline-flex items-center gap-1 text-xs"
+        >
+          <ChevronLeft size={14} /> Anterior
+        </button>
+        <h3 className="text-sm font-semibold text-white">
+          {MONTH_NAMES[month]} {year}
+        </h3>
+        <button
+          onClick={onNextMonth}
+          className="btn-ghost inline-flex items-center gap-1 text-xs"
+        >
+          Próximo <ChevronRight size={14} />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 border-b border-white/5">
+        {WEEKDAY_NAMES.map((d) => (
+          <div
+            key={d}
+            className="text-center text-xs text-slate-500 py-2 font-medium uppercase tracking-wide"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {cells.map((day, idx) => {
+          if (!day) {
+            return (
+              <div
+                key={`empty-${idx}`}
+                className="min-h-24 border-b border-r border-white/5 bg-transparent"
+              />
+            );
+          }
+          const dayItems = byDay[day] ?? [];
+          const isToday = isCurrentMonth && todayDate.getDate() === day;
+          const pagar = dayItems.filter(
+            (i) => i.tipo === "PAGAR" && i.status !== "REALIZADO",
+          );
+          const receber = dayItems.filter(
+            (i) => i.tipo === "RECEBER" && i.status !== "REALIZADO",
+          );
+          const totalPagar = pagar.reduce((s, i) => s + Number(i.valor), 0);
+          const totalReceber = receber.reduce((s, i) => s + Number(i.valor), 0);
+
+          return (
+            <div
+              key={day}
+              className={`min-h-24 border-b border-r border-white/5 p-1.5 flex flex-col gap-1 ${isToday ? "bg-blue-500/10" : ""}`}
+            >
+              <span
+                className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? "bg-blue-500 text-white" : "text-slate-400"}`}
+              >
+                {day}
+              </span>
+              {totalPagar > 0 && (
+                <div className="text-xs text-red-400 font-medium truncate">
+                  -{formatCurrency(totalPagar)}
+                </div>
+              )}
+              {totalReceber > 0 && (
+                <div className="text-xs text-emerald-400 font-medium truncate">
+                  +{formatCurrency(totalReceber)}
+                </div>
+              )}
+              <div className="space-y-0.5 overflow-hidden">
+                {dayItems.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    className={`text-xs truncate rounded px-1 py-0.5 cursor-pointer transition-opacity hover:opacity-80 ${
+                      item.status === "REALIZADO"
+                        ? "text-slate-500 bg-white/5 line-through"
+                        : item.tipo === "RECEBER"
+                          ? "text-emerald-300 bg-emerald-500/10"
+                          : "text-red-300 bg-red-500/10"
+                    }`}
+                    title={`${item.titulo}${item.origem ? ` — ${item.origem}` : ""} (${item.empresa?.nome})`}
+                    onClick={() => item.status !== "REALIZADO" && onBaixa(item)}
+                  >
+                    {item.titulo}
+                  </div>
+                ))}
+                {dayItems.length > 3 && (
+                  <div className="text-xs text-slate-500 pl-1">
+                    +{dayItems.length - 3} mais
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function CalendarioPage() {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -491,6 +652,9 @@ export default function CalendarioPage() {
   const [baixaItem, setBaixaItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [viewMode, setViewMode] = useState("lista");
+  const [calendarYear, setCalendarYear] = useState(today.getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
   const [historicoPage, setHistoricoPage] = useState(1);
   const qc = useQueryClient();
 
@@ -537,6 +701,35 @@ export default function CalendarioPage() {
           page: historicoPage,
         })
         .then((r) => r.data),
+  });
+
+  const calendarDataInicio = useMemo(
+    () => new Date(calendarYear, calendarMonth, 1).toISOString().slice(0, 10),
+    [calendarYear, calendarMonth],
+  );
+  const calendarDataFim = useMemo(
+    () =>
+      new Date(calendarYear, calendarMonth + 1, 0).toISOString().slice(0, 10),
+    [calendarYear, calendarMonth],
+  );
+
+  const { data: calendarItens = [], isLoading: loadingCalendar } = useQuery({
+    queryKey: [
+      "agenda",
+      "calendar",
+      calendarDataInicio,
+      calendarDataFim,
+      empresaFiltro,
+    ],
+    queryFn: () =>
+      agendaApi
+        .listar({
+          dataInicio: calendarDataInicio,
+          dataFim: calendarDataFim,
+          ...(empresaFiltro && { empresaId: empresaFiltro }),
+        })
+        .then((r) => r.data),
+    enabled: viewMode === "calendario",
   });
 
   const historicoItems = Array.isArray(historicoBaixas)
@@ -604,10 +797,30 @@ export default function CalendarioPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Calendário Financeiro</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Contas a pagar e receber organizadas por data
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-white">
+              Calendário Financeiro
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Contas a pagar e receber organizadas por data
+            </p>
+          </div>
+          <div className="flex items-center gap-1 rounded-xl glass p-1 shrink-0">
+            <button
+              onClick={() => setViewMode("lista")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "lista" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+            >
+              <List size={13} /> Lista
+            </button>
+            <button
+              onClick={() => setViewMode("calendario")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "calendario" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+            >
+              <LayoutGrid size={13} /> Calendário
+            </button>
+          </div>
+        </div>
       </div>
 
       {showForm ? (
@@ -654,164 +867,225 @@ export default function CalendarioPage() {
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-3 items-center">
-        <Filter size={14} className="text-slate-400" />
-        <input
-          type="date"
-          value={dataInicio}
-          onChange={(e) => {
-            setDataInicio(e.target.value);
-            setHistoricoPage(1);
-          }}
-          className="input-base"
-          style={{ width: 150 }}
-        />
-        <span className="text-slate-500 text-sm">até</span>
-        <input
-          type="date"
-          value={dataFim}
-          onChange={(e) => {
-            setDataFim(e.target.value);
-            setHistoricoPage(1);
-          }}
-          className="input-base"
-          style={{ width: 150 }}
-        />
-        <div className="min-w-48">
-          <Select
-            value={empresaFiltro}
-            onChange={(e) => {
-              setEmpresaFiltro(e.target.value);
-              setHistoricoPage(1);
-            }}
-            options={empresas.map((empresa) => ({
-              value: empresa.id,
-              label: empresa.nome,
-            }))}
-            placeholder="Todas as empresas"
-          />
-        </div>
-        <div className="flex gap-1">
-          {STATUS_FILTER.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setStatusFiltro(s.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                statusFiltro === s.value
-                  ? "bg-blue-600 text-white"
-                  : "glass text-slate-400 hover:text-white"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1">
-          {TIPO_FILTER.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setTipoFiltro(s.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                tipoFiltro === s.value
-                  ? "bg-slate-100 text-slate-900"
-                  : "glass text-slate-400 hover:text-white"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="glass card-shadow rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/5 text-xs text-slate-500 uppercase tracking-wider">
-          <div className="col-span-2">Data</div>
-          <div className="col-span-3">Título</div>
-          <div className="col-span-2">Empresa</div>
-          <div className="col-span-2 text-right">Valor</div>
-          <div className="col-span-1 text-center">Tipo</div>
-          <div className="col-span-1 text-center">Status</div>
-          <div className="col-span-1 text-center">Ação</div>
-        </div>
-        {isLoading && (
-          <div className="flex items-center justify-center py-16 text-slate-500 text-sm">
-            Carregando agenda…
+      {viewMode === "calendario" ? (
+        <>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Filter size={14} className="text-slate-400" />
+            <div className="min-w-48">
+              <Select
+                value={empresaFiltro}
+                onChange={(e) => setEmpresaFiltro(e.target.value)}
+                options={empresas.map((empresa) => ({
+                  value: empresa.id,
+                  label: empresa.nome,
+                }))}
+                placeholder="Todas as empresas"
+              />
+            </div>
           </div>
-        )}
-        {!isLoading && itens.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-            <CalendarDays size={32} className="mb-2 opacity-40" />
-            <p className="text-sm">Nenhum item encontrado para este período.</p>
+          {loadingCalendar ? (
+            <div className="text-sm text-slate-500 py-8 text-center">
+              Carregando calendário…
+            </div>
+          ) : (
+            <CalendarGrid
+              year={calendarYear}
+              month={calendarMonth}
+              itens={calendarItens}
+              onPrevMonth={() => {
+                if (calendarMonth === 0) {
+                  setCalendarMonth(11);
+                  setCalendarYear((y) => y - 1);
+                } else {
+                  setCalendarMonth((m) => m - 1);
+                }
+              }}
+              onNextMonth={() => {
+                if (calendarMonth === 11) {
+                  setCalendarMonth(0);
+                  setCalendarYear((y) => y + 1);
+                } else {
+                  setCalendarMonth((m) => m + 1);
+                }
+              }}
+              onBaixa={setBaixaItem}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setShowForm(true);
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Filter size={14} className="text-slate-400" />
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(e) => {
+                setDataInicio(e.target.value);
+                setHistoricoPage(1);
+              }}
+              className="input-base"
+              style={{ width: 150 }}
+            />
+            <span className="text-slate-500 text-sm">até</span>
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(e) => {
+                setDataFim(e.target.value);
+                setHistoricoPage(1);
+              }}
+              className="input-base"
+              style={{ width: 150 }}
+            />
+            <div className="min-w-48">
+              <Select
+                value={empresaFiltro}
+                onChange={(e) => {
+                  setEmpresaFiltro(e.target.value);
+                  setHistoricoPage(1);
+                }}
+                options={empresas.map((empresa) => ({
+                  value: empresa.id,
+                  label: empresa.nome,
+                }))}
+                placeholder="Todas as empresas"
+              />
+            </div>
+            <div className="flex gap-1">
+              {STATUS_FILTER.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setStatusFiltro(s.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    statusFiltro === s.value
+                      ? "bg-blue-600 text-white"
+                      : "glass text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              {TIPO_FILTER.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setTipoFiltro(s.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    tipoFiltro === s.value
+                      ? "bg-slate-100 text-slate-900"
+                      : "glass text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-        {sortedItens.map((item) => (
-          <div
-            key={item.id}
-            className="grid grid-cols-12 gap-2 px-5 py-3.5 border-b border-white/5 hover:bg-white/2 transition-colors items-center"
-          >
-            <div className="col-span-2 text-sm text-slate-300">
-              {formatDate(item.data)}
+          <div className="glass card-shadow rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/5 text-xs text-slate-500 uppercase tracking-wider">
+              <div className="col-span-2">Data</div>
+              <div className="col-span-3">Título</div>
+              <div className="col-span-2">Empresa</div>
+              <div className="col-span-2 text-right">Valor</div>
+              <div className="col-span-1 text-center">Tipo</div>
+              <div className="col-span-1 text-center">Status</div>
+              <div className="col-span-1 text-center">Ação</div>
             </div>
-            <div className="col-span-3 text-sm text-white font-medium">
-              <div className="truncate">{item.titulo}</div>
-              {item.descricao && (
-                <div className="text-xs text-slate-500 truncate mt-0.5">
-                  {item.descricao}
-                </div>
-              )}
-            </div>
-            <div className="col-span-2 text-xs text-slate-400 truncate">
-              {item.empresa?.nome}
-            </div>
-            <div
-              className={`col-span-2 text-sm font-semibold text-right tabular-nums ${item.tipo === "RECEBER" ? "text-emerald-400" : "text-red-400"}`}
-            >
-              {item.tipo === "RECEBER" ? "+" : "-"} {formatCurrency(item.valor)}
-            </div>
-            <div className="col-span-1 text-center">
-              <span
-                className={`text-xs font-medium ${item.tipo === "RECEBER" ? "text-emerald-400" : "text-red-400"}`}
+            {isLoading && (
+              <div className="flex items-center justify-center py-16 text-slate-500 text-sm">
+                Carregando agenda…
+              </div>
+            )}
+            {!isLoading && itens.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                <CalendarDays size={32} className="mb-2 opacity-40" />
+                <p className="text-sm">
+                  Nenhum item encontrado para este período.
+                </p>
+              </div>
+            )}
+            {sortedItens.map((item) => (
+              <div
+                key={item.id}
+                className="grid grid-cols-12 gap-2 px-5 py-3.5 border-b border-white/5 hover:bg-white/2 transition-colors items-center"
               >
-                {item.tipo === "RECEBER" ? "Receber" : "Pagar"}
-              </span>
-            </div>
-            <div className="col-span-1 text-center">
-              <Badge status={item.status} />
-            </div>
-            <div className="col-span-1 text-center space-y-1">
-              {item.status !== "REALIZADO" && (
-                <>
-                  <button
-                    onClick={() => {
-                      setEditingItem(item);
-                      setShowForm(true);
-                    }}
-                    className="block w-full text-xs text-slate-300 hover:text-white font-medium transition-colors"
+                <div className="col-span-2 text-sm text-slate-300">
+                  {formatDate(item.data)}
+                </div>
+                <div className="col-span-3 text-sm text-white font-medium">
+                  <div className="truncate">{item.titulo}</div>
+                  {item.descricao && (
+                    <div className="text-xs text-slate-500 truncate mt-0.5">
+                      {item.descricao}
+                    </div>
+                  )}
+                  {item.origem && (
+                    <div className="text-xs text-slate-400 truncate mt-0.5">
+                      Origem: {item.origem}
+                    </div>
+                  )}
+                </div>
+                <div className="col-span-2 text-xs text-slate-400 truncate">
+                  {item.empresa?.nome}
+                </div>
+                <div
+                  className={`col-span-2 text-sm font-semibold text-right tabular-nums ${item.tipo === "RECEBER" ? "text-emerald-400" : "text-red-400"}`}
+                >
+                  {item.tipo === "RECEBER" ? "+" : "-"}{" "}
+                  {formatCurrency(item.valor)}
+                </div>
+                <div className="col-span-1 text-center">
+                  <span
+                    className={`text-xs font-medium ${item.tipo === "RECEBER" ? "text-emerald-400" : "text-red-400"}`}
                   >
-                    <span className="inline-flex items-center gap-1">
-                      <Pencil size={11} /> Editar
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setBaixaItem(item)}
-                    className="block w-full text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                  >
-                    Baixar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item)}
-                    className="block w-full text-xs text-red-400 hover:text-red-300 font-medium transition-colors"
-                    disabled={deleteMutation.isPending}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      <Trash2 size={11} /> Excluir
-                    </span>
-                  </button>
-                </>
-              )}
-            </div>
+                    {item.tipo === "RECEBER" ? "Receber" : "Pagar"}
+                  </span>
+                </div>
+                <div className="col-span-1 text-center">
+                  <Badge status={item.status} />
+                </div>
+                <div className="col-span-1 text-center space-y-1">
+                  {item.status !== "REALIZADO" && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingItem(item);
+                          setShowForm(true);
+                        }}
+                        className="block w-full text-xs text-slate-300 hover:text-white font-medium transition-colors"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <Pencil size={11} /> Editar
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setBaixaItem(item)}
+                        className="block w-full text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                      >
+                        Baixar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item)}
+                        className="block w-full text-xs text-red-400 hover:text-red-300 font-medium transition-colors"
+                        disabled={deleteMutation.isPending}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <Trash2 size={11} /> Excluir
+                        </span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       <div className="glass card-shadow rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
