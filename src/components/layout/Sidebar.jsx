@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   CalendarCheck,
+  TrendingUp,
   PieChart,
   Settings,
   LogOut,
@@ -15,6 +16,7 @@ const NAV = [
   { to: "/", label: "Dashboard", Icon: LayoutDashboard },
   { to: "/lancamentos", label: "Lançamentos", Icon: ArrowLeftRight },
   { to: "/calendario", label: "Calendário", Icon: CalendarCheck },
+  { to: "/fluxo-saldo", label: "Fluxo de Saldo", Icon: TrendingUp },
   { to: "/relatorios", label: "Relatórios", Icon: PieChart },
   { to: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
