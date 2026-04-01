@@ -23,7 +23,10 @@ export default function Sidebar() {
   const { user, logout, isAdmin } = useAuth();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex flex-col w-64 glass card-shadow border-r border-slate-200 dark:border-white/5 bg-white dark:bg-navy-900/90">
+    <aside
+      className="fixed inset-y-0 left-0 z-40 flex flex-col w-64 glass card-shadow border-r border-slate-200 dark:border-white/5"
+      style={{ backgroundColor: "var(--bg-primary)" }}
+    >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200 dark:border-white/5">
         <div className="w-9 h-9 rounded-xl bg-linear-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">

@@ -8,7 +8,10 @@ export default function Header({ onFilterChange, empresaFiltro }) {
   const { data: empresas = [] } = useEmpresas();
 
   return (
-    <header className="h-16 flex items-center px-6 gap-4 border-b border-slate-200 dark:border-white/5 glass bg-white dark:bg-navy-900/70 sticky top-0 z-30">
+    <header
+      className="h-16 flex items-center px-6 gap-4 border-b border-slate-200 dark:border-white/5 glass sticky top-0 z-30"
+      style={{ backgroundColor: "var(--glass-bg)" }}
+    >
       {/* Saldo consolidado destaque */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-600 dark:text-slate-500 hidden sm:inline">
