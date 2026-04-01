@@ -6,6 +6,10 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import "./index.css";
 import App from "./App.jsx";
 
+// Aplicar tema imediatamente antes de renderizar
+const savedTheme = localStorage.getItem("app-theme") || "light";
+document.documentElement.setAttribute("data-theme", savedTheme);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30_000 },

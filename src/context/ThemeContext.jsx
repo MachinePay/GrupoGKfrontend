@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useState } from "react";
 
 const ThemeContext = createContext();
 
@@ -9,12 +9,19 @@ export function ThemeProvider({ children }) {
     return saved || "light";
   });
 
-  useEffect(() => {
-    // Aplicar tema ao elemento raiz e salvar no localStorage
+  useLayoutEffect(() => {
+    // Aplicar tema ao elemento raiz ANTES da renderização visual
     const html = document.documentElement;
     html.setAttribute("data-theme", theme);
     localStorage.setItem("app-theme", theme);
   }, [theme]);
+
+  // Aplicar tema imediatamente ao montar
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem("app-theme") || "light";
+    html.setAttribute("data-theme", savedTheme);
+  }, []);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
