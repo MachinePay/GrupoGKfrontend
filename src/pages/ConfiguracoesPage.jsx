@@ -9,9 +9,13 @@ import {
   CreditCard,
   ToggleLeft,
   ToggleRight,
+  Palette,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cadastrosApi, authApi } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas } from "../hooks/useFinanceiro.js";
 import { Input, Select } from "../components/ui/FormField.jsx";
 
@@ -363,6 +367,115 @@ function UsuariosTab() {
   );
 }
 
+/* ─────────────── Tema ─────────────── */
+function TemaTab() {
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">
+          Tema da Aplicação
+        </h3>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mb-6">
+          Escolha entre tema claro ou escuro
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Tema Claro */}
+        <button
+          onClick={() => theme !== "light" && toggleTheme()}
+          className={`glass rounded-xl p-4 text-center transition-all cursor-pointer ${
+            theme === "light"
+              ? "ring-2 ring-blue-600 bg-white dark:bg-slate-800"
+              : "hover:bg-slate-100 dark:hover:bg-slate-800/50"
+          }`}
+        >
+          <div className="flex justify-center mb-3">
+            <Sun
+              size={32}
+              className={`${
+                theme === "light"
+                  ? "text-blue-600"
+                  : "text-slate-400 dark:text-slate-500"
+              }`}
+            />
+          </div>
+          <p
+            className={`text-sm font-medium ${
+              theme === "light"
+                ? "text-slate-900"
+                : "text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            Claro
+          </p>
+          <p
+            className={`text-xs mt-1 ${
+              theme === "light"
+                ? "text-blue-600"
+                : "text-slate-500 dark:text-slate-500"
+            }`}
+          >
+            {theme === "light" ? "Ativo" : "Clique para ativar"}
+          </p>
+        </button>
+
+        {/* Tema Escuro */}
+        <button
+          onClick={() => theme !== "dark" && toggleTheme()}
+          className={`glass rounded-xl p-4 text-center transition-all cursor-pointer ${
+            theme === "dark"
+              ? "ring-2 ring-blue-600 bg-slate-900 dark:bg-slate-800"
+              : "hover:bg-slate-100 dark:hover:bg-slate-800/50"
+          }`}
+        >
+          <div className="flex justify-center mb-3">
+            <Moon
+              size={32}
+              className={`${
+                theme === "dark"
+                  ? "text-blue-600"
+                  : "text-slate-400 dark:text-slate-500"
+              }`}
+            />
+          </div>
+          <p
+            className={`text-sm font-medium ${
+              theme === "dark"
+                ? "text-white"
+                : "text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            Escuro
+          </p>
+          <p
+            className={`text-xs mt-1 ${
+              theme === "dark"
+                ? "text-blue-600"
+                : "text-slate-500 dark:text-slate-500"
+            }`}
+          >
+            {theme === "dark" ? "Ativo" : "Clique para ativar"}
+          </p>
+        </button>
+      </div>
+
+      <div
+        className={`glass rounded-xl p-4 text-sm ${
+          theme === "light"
+            ? "bg-blue-50/50 text-blue-900 border border-blue-200/50"
+            : "bg-blue-950/30 text-blue-100 border border-blue-900/50"
+        }`}
+      >
+        Tema {theme === "light" ? "claro" : "escuro"} ativado. A preferência
+        será salva automaticamente.
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Page ─────────────── */
 const TABS = [
   {
@@ -376,6 +489,12 @@ const TABS = [
     label: "Projetos",
     icon: Briefcase,
     component: ProjetosTab,
+  },
+  {
+    key: "tema",
+    label: "Tema",
+    icon: Palette,
+    component: TemaTab,
   },
 ];
 
@@ -397,6 +516,8 @@ export default function ConfiguracoesPage() {
         return <ProjetosTab />;
       case "usuarios":
         return isAdmin ? <UsuariosTab /> : null;
+      case "tema":
+        return <TemaTab />;
       default:
         return null;
     }
@@ -405,9 +526,11 @@ export default function ConfiguracoesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Configurações</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Gerencie contas, projetos e usuários
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+          Configurações
+        </h1>
+        <p className="text-sm text-slate-600 dark:text-slate-500 mt-0.5">
+          Gerencie contas, projetos, usuários e tema
         </p>
       </div>
 
@@ -421,7 +544,7 @@ export default function ConfiguracoesPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? "bg-blue-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               <Icon size={14} />

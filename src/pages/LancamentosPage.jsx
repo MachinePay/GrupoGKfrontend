@@ -33,10 +33,25 @@ const STATUS = [
   { value: "REALIZADO", label: "Realizado" },
 ];
 
+const TIPOS_DESPESA = [
+  { value: "DESPESAS_ADMINISTRATIVAS", label: "Despesas Administrativas" },
+  { value: "RETIRADA_SOCIOS", label: "Retirada de Socios" },
+  { value: "FOLHA_PAGAMENTO", label: "Folha de Pagamento" },
+  { value: "DESPESAS_DIVERSAS", label: "Despesas Diversas" },
+  { value: "GASOLINA", label: "Gasolina" },
+  { value: "MATERIAL_ESCRITORIO", label: "Material Escritorio" },
+  {
+    value: "MATERIAL_ESTOQUE_EMBALAGENS",
+    label: "Material Estoque/Embalagens",
+  },
+  { value: "CUSTOS_OPERACIONAIS", label: "Custos Operacionais" },
+];
+
 const INITIAL_FILTERS = {
   empresaId: "",
   contaId: "",
   categoria: "",
+  tipoDespesa: "",
   tipo: "",
   status: "",
   canalOrigem: "",
@@ -179,6 +194,13 @@ export default function LancamentosPage() {
                 placeholder="Todas"
               />
               <Select
+                label="Tipo de Despesa"
+                value={draftFilters.tipoDespesa}
+                onChange={setFilter("tipoDespesa")}
+                options={TIPOS_DESPESA}
+                placeholder="Todos"
+              />
+              <Select
                 label="Tipo"
                 value={draftFilters.tipo}
                 onChange={setFilter("tipo")}
@@ -263,6 +285,9 @@ export default function LancamentosPage() {
                   <th className="px-3 py-2 text-left font-medium">Empresa</th>
                   <th className="px-3 py-2 text-left font-medium">Tipo</th>
                   <th className="px-3 py-2 text-left font-medium">Categoria</th>
+                  <th className="px-3 py-2 text-left font-medium">
+                    Tipo Despesa
+                  </th>
                   <th className="px-3 py-2 text-left font-medium">Canal</th>
                   <th className="px-3 py-2 text-left font-medium">Centro</th>
                   <th className="px-3 py-2 text-left font-medium">Conta</th>
@@ -277,7 +302,7 @@ export default function LancamentosPage() {
                 {isLoading && (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={11}
                       className="px-3 py-8 text-center text-slate-500"
                     >
                       Carregando histórico...
@@ -288,7 +313,7 @@ export default function LancamentosPage() {
                 {!isLoading && items.length === 0 && (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={11}
                       className="px-3 py-8 text-center text-slate-500"
                     >
                       Nenhuma movimentação encontrada para os filtros aplicados.
@@ -306,6 +331,7 @@ export default function LancamentosPage() {
                       <td className="px-3 py-2">{item.empresa?.nome ?? "-"}</td>
                       <td className="px-3 py-2">{item.tipo}</td>
                       <td className="px-3 py-2">{item.categoria ?? "-"}</td>
+                      <td className="px-3 py-2">{item.tipoDespesa ?? "-"}</td>
                       <td className="px-3 py-2">{item.canalOrigem ?? "-"}</td>
                       <td className="px-3 py-2">
                         {item.centroOperacao ?? "-"}

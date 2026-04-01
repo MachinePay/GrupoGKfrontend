@@ -46,6 +46,23 @@ const CATEGORIAS_SAIDA = [
   { value: "PREJUIZO", label: "Prejuízo" },
 ];
 
+const TIPOS_DESPESA_CUSTO_FIXO = [
+  { value: "DESPESAS_ADMINISTRATIVAS", label: "Despesas Administrativas" },
+  { value: "RETIRADA_SOCIOS", label: "Retirada de Socios" },
+  { value: "FOLHA_PAGAMENTO", label: "Folha de Pagamento" },
+];
+
+const TIPOS_DESPESA_CUSTO_VARIAVEL = [
+  { value: "DESPESAS_DIVERSAS", label: "Despesas Diversas" },
+  { value: "GASOLINA", label: "Gasolina" },
+  { value: "MATERIAL_ESCRITORIO", label: "Material Escritorio" },
+  {
+    value: "MATERIAL_ESTOQUE_EMBALAGENS",
+    label: "Material Estoque/Embalagens",
+  },
+  { value: "CUSTOS_OPERACIONAIS", label: "Custos Operacionais" },
+];
+
 const STATUS_OPTS = [
   { value: "REALIZADO", label: "Realizado" },
   { value: "PREVISTO", label: "Previsto" },
@@ -65,6 +82,7 @@ const INITIAL = {
   tipo: "ENTRADA",
   valor: "",
   categoria: "",
+  tipoDespesa: "",
   canalOrigem: "",
   centroOperacao: "",
   referencia: "",
@@ -96,6 +114,12 @@ export default function MovimentacaoForm({ onSuccess }) {
       : form.tipo === "SAIDA"
         ? CATEGORIAS_SAIDA
         : CATEGORIAS;
+  const tipoDespesaOptions =
+    form.categoria === "CUSTO_FIXO"
+      ? TIPOS_DESPESA_CUSTO_FIXO
+      : form.categoria === "CUSTO_VARIAVEL"
+        ? TIPOS_DESPESA_CUSTO_VARIAVEL
+        : [];
 
   const mutation = useMutation({
     mutationFn: (payload) => movimentacoesApi.criar(payload),
@@ -112,6 +136,13 @@ export default function MovimentacaoForm({ onSuccess }) {
   function set(field) {
     return (e) => {
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      if (
+        field === "categoria" &&
+        e.target.value !== "CUSTO_FIXO" &&
+        e.target.value !== "CUSTO_VARIAVEL"
+      ) {
+        setForm((prev) => ({ ...prev, tipoDespesa: "" }));
+      }
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     };
   }
@@ -126,6 +157,13 @@ export default function MovimentacaoForm({ onSuccess }) {
     if (!form.status) e.status = "Obrigatório";
     if (form.tipo !== "TRANSFERENCIA" && !form.categoria)
       e.categoria = "Obrigatório";
+    if (
+      (form.categoria === "CUSTO_FIXO" ||
+        form.categoria === "CUSTO_VARIAVEL") &&
+      !form.tipoDespesa
+    ) {
+      e.tipoDespesa = "Obrigatório para custo";
+    }
     if (isMaisQuiosque && !form.projetoId)
       e.projetoId = "Obrigatório para MaisQuiosque";
     if (isGiraKids && !form.subcategoria)
@@ -153,6 +191,7 @@ export default function MovimentacaoForm({ onSuccess }) {
       tipo: form.tipo,
       valor: form.valor,
       categoria: form.categoria || undefined,
+      tipoDespesa: form.tipoDespesa || undefined,
       canalOrigem: form.canalOrigem || undefined,
       centroOperacao: form.centroOperacao || undefined,
       referencia: form.referencia || undefined,
@@ -239,6 +278,20 @@ export default function MovimentacaoForm({ onSuccess }) {
           error={errors.status}
         />
       </div>
+
+      {(form.categoria === "CUSTO_FIXO" ||
+        form.categoria === "CUSTO_VARIAVEL") && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Select
+            label="Tipo de Despesa"
+            value={form.tipoDespesa}
+            onChange={set("tipoDespesa")}
+            options={tipoDespesaOptions}
+            placeholder="Selecione…"
+            error={errors.tipoDespesa}
+          />
+        </div>
+      )}
 
       {/* Contas dependem do tipo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

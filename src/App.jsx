@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
+import { ThemeProvider } from "./context/ThemeContext.jsx";
 
 const AppShell = lazy(() => import("./components/layout/AppShell.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -12,7 +13,7 @@ const ConfiguracoesPage = lazy(() => import("./pages/ConfiguracoesPage.jsx"));
 
 function RouteFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f1729] text-slate-400 text-sm">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0f1729] text-slate-400 text-sm">
       Carregando...
     </div>
   );
@@ -24,7 +25,7 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-export default function App() {
+function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
@@ -48,5 +49,13 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppRoutes />
+    </ThemeProvider>
   );
 }

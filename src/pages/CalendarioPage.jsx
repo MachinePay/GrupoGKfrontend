@@ -54,6 +54,23 @@ const SUBCATEGORIAS_GIRAKIDS = [
   { value: "OUTROS", label: "Outros" },
 ];
 
+const TIPOS_DESPESA_CUSTO_FIXO = [
+  { value: "DESPESAS_ADMINISTRATIVAS", label: "Despesas Administrativas" },
+  { value: "RETIRADA_SOCIOS", label: "Retirada de Socios" },
+  { value: "FOLHA_PAGAMENTO", label: "Folha de Pagamento" },
+];
+
+const TIPOS_DESPESA_CUSTO_VARIAVEL = [
+  { value: "DESPESAS_DIVERSAS", label: "Despesas Diversas" },
+  { value: "GASOLINA", label: "Gasolina" },
+  { value: "MATERIAL_ESCRITORIO", label: "Material Escritorio" },
+  {
+    value: "MATERIAL_ESTOQUE_EMBALAGENS",
+    label: "Material Estoque/Embalagens",
+  },
+  { value: "CUSTOS_OPERACIONAIS", label: "Custos Operacionais" },
+];
+
 const PRIORIDADE_OPTIONS = [
   { value: "ALTA", label: "Alta" },
   { value: "MEDIA", label: "Média" },
@@ -273,6 +290,7 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
   );
   const [contaId, setContaId] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [tipoDespesa, setTipoDespesa] = useState("");
   const [projetoId, setProjetoId] = useState("");
   const [subcategoria, setSubcategoria] = useState("");
   const [dataBaixa, setDataBaixa] = useState(
@@ -283,10 +301,19 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
   const isGiraKids = item?.empresa?.nome === "GiraKids";
   const categoriaOptions =
     item?.tipo === "PAGAR" ? CATEGORIAS_SAIDA : CATEGORIAS_ENTRADA;
+  const tipoDespesaOptions =
+    categoria === "CUSTO_FIXO"
+      ? TIPOS_DESPESA_CUSTO_FIXO
+      : categoria === "CUSTO_VARIAVEL"
+        ? TIPOS_DESPESA_CUSTO_VARIAVEL
+        : [];
   const canSubmit =
     !!contaId &&
     !!categoria &&
     !!dataBaixa &&
+    (categoria !== "CUSTO_FIXO" && categoria !== "CUSTO_VARIAVEL"
+      ? true
+      : !!tipoDespesa) &&
     (!isMaisQuiosque || !!projetoId) &&
     (!isGiraKids || !!subcategoria);
 
@@ -334,7 +361,15 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
             </label>
             <select
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
+              onChange={(e) => {
+                setCategoria(e.target.value);
+                if (
+                  e.target.value !== "CUSTO_FIXO" &&
+                  e.target.value !== "CUSTO_VARIAVEL"
+                ) {
+                  setTipoDespesa("");
+                }
+              }}
               className="input-base"
             >
               <option value="">Selecione a categoria…</option>
@@ -345,6 +380,25 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
               ))}
             </select>
           </div>
+          {(categoria === "CUSTO_FIXO" || categoria === "CUSTO_VARIAVEL") && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Tipo de Despesa
+              </label>
+              <select
+                value={tipoDespesa}
+                onChange={(e) => setTipoDespesa(e.target.value)}
+                className="input-base"
+              >
+                <option value="">Selecione o tipo de despesa…</option>
+                {tipoDespesaOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
               Data da baixa
@@ -404,6 +458,7 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
               onConfirm(item, {
                 contaId,
                 categoria,
+                tipoDespesa: tipoDespesa || undefined,
                 projetoId: projetoId || undefined,
                 subcategoria: subcategoria || undefined,
                 data: dataBaixa,
