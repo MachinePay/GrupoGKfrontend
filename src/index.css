@@ -23,14 +23,14 @@
 /* Light theme colors */
 :root,
 html[data-theme="light"] {
-  --bg-primary: #ffffff;
+  --bg-primary: #f8f8f8;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
   --border-color: rgba(0, 0, 0, 0.1);
-  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg: #ffffff;
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-hover: rgba(0, 0, 0, 0.04);
   --input-bg: rgba(0, 0, 0, 0.04);
