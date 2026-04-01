@@ -193,4 +193,58 @@ html[data-theme="dark"] {
   html[data-theme="dark"] .btn-ghost:hover {
     background: rgba(255, 255, 255, 0.06);
   }
+
+  /* Light theme text color overrides */
+  html[data-theme="light"] .text-white {
+    color: #000000 !important;
+  }
+
+  html[data-theme="light"] .text-slate-400 {
+    color: #4b5563 !important;
+  }
+
+  html[data-theme="light"] .text-slate-500 {
+    color: #64748b !important;
+  }
+
+  html[data-theme="light"] .text-slate-600 {
+    color: #475569 !important;
+  }
+
+  html[data-theme="light"] .text-gray-600 {
+    color: #4b5563 !important;
+  }
+
+  html[data-theme="light"] .text-blue-300 {
+    color: #1d4ed8 !important;
+  }
+
+  html[data-theme="light"] .text-blue-400 {
+    color: #2563eb !important;
+  }
+
+  html[data-theme="light"] .placeholder-slate-500::placeholder {
+    color: #cbd5e1 !important;
+  }
+
+  /* Ensure labels are visible in light theme */
+  html[data-theme="light"] label {
+    color: #000000 !important;
+  }
+
+  /* Ensure headings are visible */
+  html[data-theme="light"] h1,
+  html[data-theme="light"] h2,
+  html[data-theme="light"] h3,
+  html[data-theme="light"] h4,
+  html[data-theme="light"] h5,
+  html[data-theme="light"] h6 {
+    color: #000000 !important;
+  }
+
+  /* Icon colors for light theme */
+  html[data-theme="light"] .text-slate-400,
+  html[data-theme="light"] [class*="text-slate"] {
+    color: var(--text-secondary) !important;
+  }
 }
