@@ -1,0 +1,52 @@
+import { Suspense, lazy } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext.jsx";
+
+const AppShell = lazy(() => import("./components/layout/AppShell.jsx"));
+const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
+const LancamentosPage = lazy(() => import("./pages/LancamentosPage.jsx"));
+const CalendarioPage = lazy(() => import("./pages/CalendarioPage.jsx"));
+const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage.jsx"));
+const ConfiguracoesPage = lazy(() => import("./pages/ConfiguracoesPage.jsx"));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0f1729] text-slate-400 text-sm">
+      Carregando...
+    </div>
+  );
+}
+
+function ProtectedRoute({ children }) {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return children;
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="lancamentos" element={<LancamentosPage />} />
+          <Route path="calendario" element={<CalendarioPage />} />
+          <Route path="relatorios" element={<RelatoriosPage />} />
+          <Route path="configuracoes" element={<ConfiguracoesPage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
