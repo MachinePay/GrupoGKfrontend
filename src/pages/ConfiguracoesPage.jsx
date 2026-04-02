@@ -223,6 +223,12 @@ function ContasTab() {
     empresaId: "",
   });
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editingForm, setEditingForm] = useState({
+    nome: "",
+    banco: "",
+    empresaId: "",
+  });
 
   const { data: contas = [], isLoading } = useQuery({
     queryKey: ["contas-config"],
@@ -238,7 +244,61 @@ function ContasTab() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) => cadastrosApi.atualizarConta(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contas-config"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "contas"] });
+      setEditingId(null);
+      setEditingForm({ nome: "", banco: "", empresaId: "" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => cadastrosApi.removerConta(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contas-config"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "contas"] });
+    },
+  });
+
   const empresaOpts = empresas.map((e) => ({ value: e.id, label: e.nome }));
+
+  function startEdit(conta) {
+    setEditingId(conta.id);
+    setEditingForm({
+      nome: conta.nome,
+      banco: conta.banco,
+      empresaId: String(conta.empresa?.id ?? ""),
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingForm({ nome: "", banco: "", empresaId: "" });
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+
+    updateMutation.mutate({
+      id: editingId,
+      payload: {
+        nome: editingForm.nome,
+        banco: editingForm.banco,
+        empresaId: Number(editingForm.empresaId),
+      },
+    });
+  }
+
+  function removeConta(conta) {
+    const ok = window.confirm(
+      `Deseja excluir a conta \"${conta.banco} - ${conta.nome}\"?`,
+    );
+
+    if (!ok) return;
+    deleteMutation.mutate(conta.id);
+  }
 
   return (
     <div className="space-y-4">
@@ -292,7 +352,7 @@ function ContasTab() {
             onClick={() =>
               createMutation.mutate({
                 ...form,
-                saldoInicial: Number(form.saldoInicial) || 0,
+                saldoAtual: Number(form.saldoInicial) || 0,
                 empresaId: Number(form.empresaId),
               })
             }
@@ -302,6 +362,20 @@ function ContasTab() {
             {createMutation.isPending ? "Salvando…" : "Salvar Conta"}
           </button>
         </div>
+      )}
+
+      {updateMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {updateMutation.error?.response?.data?.message ??
+            "Erro ao atualizar conta."}
+        </p>
+      )}
+
+      {deleteMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {deleteMutation.error?.response?.data?.message ??
+            "Erro ao excluir conta."}
+        </p>
       )}
 
       <div className="glass rounded-xl overflow-hidden">
@@ -315,20 +389,96 @@ function ContasTab() {
             key={c.id}
             className="flex items-center justify-between px-4 py-3 border-b border-white/5"
           >
-            <div>
-              <p className="text-sm text-white font-medium">
-                {c.banco} – {c.nome}
-              </p>
-              <p className="text-xs text-slate-500">{c.empresa?.nome}</p>
-            </div>
-            <span
-              className={`text-sm font-semibold tabular-nums ${c.saldoAtual >= 0 ? "text-emerald-400" : "text-red-400"}`}
-            >
-              {new Intl.NumberFormat("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              }).format(c.saldoAtual)}
-            </span>
+            {editingId === c.id ? (
+              <div className="w-full grid grid-cols-1 md:grid-cols-[1fr_1fr_220px_auto] gap-2 items-center">
+                <Input
+                  value={editingForm.banco}
+                  onChange={(e) =>
+                    setEditingForm((prev) => ({
+                      ...prev,
+                      banco: e.target.value,
+                    }))
+                  }
+                />
+                <Input
+                  value={editingForm.nome}
+                  onChange={(e) =>
+                    setEditingForm((prev) => ({
+                      ...prev,
+                      nome: e.target.value,
+                    }))
+                  }
+                />
+                <Select
+                  options={empresaOpts}
+                  value={editingForm.empresaId}
+                  onChange={(e) =>
+                    setEditingForm((prev) => ({
+                      ...prev,
+                      empresaId: e.target.value,
+                    }))
+                  }
+                  placeholder="Selecione…"
+                />
+                <div className="flex items-center gap-2 justify-end">
+                  <button
+                    type="button"
+                    className="btn-primary px-3 py-1.5 text-xs"
+                    onClick={saveEdit}
+                    disabled={
+                      updateMutation.isPending ||
+                      !editingForm.nome.trim() ||
+                      !editingForm.banco.trim() ||
+                      !editingForm.empresaId
+                    }
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost px-3 py-1.5 text-xs"
+                    onClick={cancelEdit}
+                    disabled={updateMutation.isPending}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-sm text-white font-medium">
+                    {c.banco} – {c.nome}
+                  </p>
+                  <p className="text-xs text-slate-500">{c.empresa?.nome}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-sm font-semibold tabular-nums ${c.saldoAtual >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                  >
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(c.saldoAtual)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(c)}
+                    className="btn-ghost px-2 py-1 text-xs flex items-center gap-1"
+                  >
+                    <Pencil size={12} /> Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeConta(c)}
+                    className="btn-ghost px-2 py-1 text-xs text-red-300 hover:text-red-200 flex items-center gap-1"
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 size={12} /> Excluir
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

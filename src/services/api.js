@@ -74,6 +74,9 @@ export const cadastrosApi = {
       params: empresaId ? { empresaId } : {},
     }),
   criarConta: (payload) => api.post("/cadastros/contas-bancarias", payload),
+  atualizarConta: (id, payload) =>
+    api.patch(`/cadastros/contas-bancarias/${id}`, payload),
+  removerConta: (id) => api.delete(`/cadastros/contas-bancarias/${id}`),
   listarProjetos: (empresaId) =>
     api.get("/cadastros/projetos", { params: empresaId ? { empresaId } : {} }),
   criarProjeto: (payload) => api.post("/cadastros/projetos", payload),
