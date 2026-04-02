@@ -750,6 +750,7 @@ export default function CalendarioPage() {
       agendaApi.baixar(item.id, {
         contaId: Number(payload.contaId),
         categoria: payload.categoria,
+        tipoDespesa: payload.tipoDespesa || undefined,
         projetoId: payload.projetoId ? Number(payload.projetoId) : undefined,
         subcategoria: payload.subcategoria || undefined,
         data: payload.data || undefined,
