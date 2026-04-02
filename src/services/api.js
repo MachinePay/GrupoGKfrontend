@@ -66,6 +66,9 @@ export const agendaApi = {
 export const cadastrosApi = {
   listarEmpresas: () => api.get("/cadastros/empresas"),
   criarEmpresa: (payload) => api.post("/cadastros/empresas", payload),
+  atualizarEmpresa: (id, payload) =>
+    api.patch(`/cadastros/empresas/${id}`, payload),
+  removerEmpresa: (id) => api.delete(`/cadastros/empresas/${id}`),
   listarContas: (empresaId) =>
     api.get("/cadastros/contas-bancarias", {
       params: empresaId ? { empresaId } : {},

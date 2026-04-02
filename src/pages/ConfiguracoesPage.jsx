@@ -12,12 +12,205 @@ import {
   Palette,
   Sun,
   Moon,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cadastrosApi, authApi } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas } from "../hooks/useFinanceiro.js";
 import { Input, Select } from "../components/ui/FormField.jsx";
+
+/* ─────────────── Empresas ─────────────── */
+function EmpresasTab() {
+  const qc = useQueryClient();
+  const { data: empresas = [], isLoading } = useEmpresas();
+  const [nome, setNome] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editingNome, setEditingNome] = useState("");
+
+  const createMutation = useMutation({
+    mutationFn: (data) => cadastrosApi.criarEmpresa(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      setNome("");
+      setShowForm(false);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) => cadastrosApi.atualizarEmpresa(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      setEditingId(null);
+      setEditingNome("");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => cadastrosApi.removerEmpresa(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: ["contas-config"] });
+      qc.invalidateQueries({ queryKey: ["projetos-config"] });
+    },
+  });
+
+  function startEdit(empresa) {
+    setEditingId(empresa.id);
+    setEditingNome(empresa.nome);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingNome("");
+  }
+
+  function saveEdit() {
+    if (!editingId || !editingNome.trim()) return;
+    updateMutation.mutate({ id: editingId, payload: { nome: editingNome } });
+  }
+
+  function removeEmpresa(empresa) {
+    const ok = window.confirm(
+      `Deseja excluir a empresa \"${empresa.nome}\"? Esta acao nao pode ser desfeita.`,
+    );
+
+    if (!ok) return;
+    deleteMutation.mutate(empresa.id);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-slate-400">
+          {empresas.length} empresa(s) cadastrada(s)
+        </p>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="btn-primary flex items-center gap-1.5 text-sm px-3 py-2"
+        >
+          {showForm ? <X size={14} /> : <Plus size={14} />}
+          {showForm ? "Cancelar" : "Nova Empresa"}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="glass rounded-xl p-4 space-y-3">
+          <Input
+            label="Nome da Empresa"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Ex: GiraKids"
+          />
+          <button
+            onClick={() => createMutation.mutate({ nome })}
+            className="btn-primary w-full"
+            disabled={createMutation.isPending || !nome.trim()}
+          >
+            {createMutation.isPending ? "Salvando…" : "Salvar Empresa"}
+          </button>
+        </div>
+      )}
+
+      {createMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {createMutation.error?.response?.data?.message ??
+            "Erro ao salvar empresa."}
+        </p>
+      )}
+
+      {updateMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {updateMutation.error?.response?.data?.message ??
+            "Erro ao atualizar empresa."}
+        </p>
+      )}
+
+      {deleteMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {deleteMutation.error?.response?.data?.message ??
+            "Erro ao excluir empresa."}
+        </p>
+      )}
+
+      <div className="glass rounded-xl overflow-hidden">
+        {isLoading && (
+          <div className="p-6 text-center text-slate-500 text-sm">
+            Carregando…
+          </div>
+        )}
+
+        {!isLoading && empresas.length === 0 && (
+          <div className="p-6 text-center text-slate-500 text-sm">
+            Nenhuma empresa cadastrada.
+          </div>
+        )}
+
+        {empresas.map((empresa) => (
+          <div
+            key={empresa.id}
+            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+          >
+            {editingId === empresa.id ? (
+              <div className="flex-1 flex items-center gap-2">
+                <Input
+                  className="max-w-sm"
+                  value={editingNome}
+                  onChange={(e) => setEditingNome(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  className="btn-primary px-3 py-1.5 text-xs"
+                  disabled={updateMutation.isPending || !editingNome.trim()}
+                >
+                  Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="btn-ghost px-3 py-1.5 text-xs"
+                  disabled={updateMutation.isPending}
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <Building2 size={14} className="text-slate-400" />
+                  <p className="text-sm text-white font-medium">
+                    {empresa.nome}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(empresa)}
+                    className="btn-ghost px-2 py-1 text-xs flex items-center gap-1"
+                  >
+                    <Pencil size={12} /> Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeEmpresa(empresa)}
+                    className="btn-ghost px-2 py-1 text-xs text-red-300 hover:text-red-200 flex items-center gap-1"
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 size={12} /> Excluir
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* ─────────────── Contas Bancárias ─────────────── */
 function ContasTab() {
@@ -479,6 +672,12 @@ function TemaTab() {
 /* ─────────────── Page ─────────────── */
 const TABS = [
   {
+    key: "empresas",
+    label: "Empresas",
+    icon: Building2,
+    component: EmpresasTab,
+  },
+  {
     key: "contas",
     label: "Contas Bancárias",
     icon: CreditCard,
@@ -505,11 +704,13 @@ const ADMIN_TABS = [
 
 export default function ConfiguracoesPage() {
   const { isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState("contas");
+  const [activeTab, setActiveTab] = useState("empresas");
   const tabs = isAdmin ? ADMIN_TABS : TABS;
 
   function renderTab() {
     switch (activeTab) {
+      case "empresas":
+        return <EmpresasTab />;
       case "contas":
         return <ContasTab />;
       case "projetos":
