@@ -16,10 +16,256 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { agendaApi } from "../services/api.js";
-import { useEmpresas } from "../hooks/useFinanceiro.js";
+import { useContas, useEmpresas, useProjetos } from "../hooks/useFinanceiro.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
 import { Select } from "../components/ui/FormField.jsx";
 import { Badge } from "../components/ui/Badge.jsx";
+
+const CATEGORIAS_ENTRADA = [
+  { value: "PEDIDO", label: "Pedido" },
+  { value: "COMISSAO", label: "Comissão" },
+  { value: "RECOLHE_LOJAS", label: "Recolhe Lojas" },
+  { value: "BOLETO", label: "Boleto" },
+  { value: "CHEQUE", label: "Cheque" },
+  { value: "AJUSTE_SALDO", label: "Ajuste de Saldo" },
+];
+
+const CATEGORIAS_SAIDA = [
+  { value: "FORNECEDOR", label: "Fornecedor" },
+  { value: "CUSTO_FIXO", label: "Custo Fixo" },
+  { value: "CUSTO_VARIAVEL", label: "Custo Variável" },
+  { value: "INVESTIMENTO", label: "Investimento" },
+  { value: "PREJUIZO", label: "Prejuízo" },
+];
+
+const SUBCATEGORIAS_GIRAKIDS = [
+  { value: "TAKE_PARCERIA", label: "TakeParceria" },
+  { value: "PELUCIA_PARCERIA", label: "PelúciaParceria" },
+  { value: "OUTROS", label: "Outros" },
+];
+
+const TIPOS_DESPESA_CUSTO_FIXO = [
+  { value: "DESPESAS_ADMINISTRATIVAS", label: "Despesas Administrativas" },
+  { value: "RETIRADA_SOCIOS", label: "Retirada de Socios" },
+  { value: "FOLHA_PAGAMENTO", label: "Folha de Pagamento" },
+];
+
+const TIPOS_DESPESA_CUSTO_VARIAVEL = [
+  { value: "DESPESAS_DIVERSAS", label: "Despesas Diversas" },
+  { value: "GASOLINA", label: "Gasolina" },
+  { value: "MATERIAL_ESCRITORIO", label: "Material Escritorio" },
+  {
+    value: "MATERIAL_ESTOQUE_EMBALAGENS",
+    label: "Material Estoque/Embalagens",
+  },
+  { value: "CUSTOS_OPERACIONAIS", label: "Custos Operacionais" },
+];
+
+function DarBaixaModal({ item, onConfirm, onCancel, isLoading, errorMessage }) {
+  const { data: contas = [] } = useContas(item?.empresaId);
+  const { data: projetos = [] } = useProjetos(
+    item?.empresa?.nome === "MaisQuiosque" ? item?.empresaId : undefined,
+  );
+  const [contaId, setContaId] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [tipoDespesa, setTipoDespesa] = useState("");
+  const [projetoId, setProjetoId] = useState("");
+  const [subcategoria, setSubcategoria] = useState("");
+  const [dataBaixa, setDataBaixa] = useState(
+    item?.data ? new Date(item.data).toISOString().slice(0, 10) : "",
+  );
+
+  const isMaisQuiosque = item?.empresa?.nome === "MaisQuiosque";
+  const isGiraKids = item?.empresa?.nome === "GiraKids";
+  const categoriaOptions =
+    item?.tipo === "PAGAR" ? CATEGORIAS_SAIDA : CATEGORIAS_ENTRADA;
+  const tipoDespesaOptions =
+    categoria === "CUSTO_FIXO"
+      ? TIPOS_DESPESA_CUSTO_FIXO
+      : categoria === "CUSTO_VARIAVEL"
+        ? TIPOS_DESPESA_CUSTO_VARIAVEL
+        : [];
+
+  const canSubmit =
+    !!contaId &&
+    !!categoria &&
+    !!dataBaixa &&
+    (categoria !== "CUSTO_FIXO" && categoria !== "CUSTO_VARIAVEL"
+      ? true
+      : !!tipoDespesa) &&
+    (!isMaisQuiosque || !!projetoId) &&
+    (!isGiraKids || !!subcategoria);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="glass card-shadow rounded-2xl p-6 w-full max-w-md space-y-4">
+        <div className="flex items-center gap-2">
+          <CheckCircle size={18} className="text-emerald-400" />
+          <h3 className="font-semibold text-white">Dar Baixa</h3>
+        </div>
+
+        <div className="text-sm text-slate-400 space-y-1">
+          <p>
+            <span className="text-white font-medium">{item?.titulo}</span>
+          </p>
+          <p>
+            Valor:{" "}
+            <span className="text-white">{formatCurrency(item?.valor)}</span>
+          </p>
+          <p>
+            Empresa: <span className="text-white">{item?.empresa?.nome}</span>
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              Conta Debitada
+            </label>
+            <select
+              value={contaId}
+              onChange={(e) => setContaId(e.target.value)}
+              className="input-base"
+            >
+              <option value="">Selecione a conta...</option>
+              {contas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.banco} - {c.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              Categoria
+            </label>
+            <select
+              value={categoria}
+              onChange={(e) => {
+                setCategoria(e.target.value);
+                if (
+                  e.target.value !== "CUSTO_FIXO" &&
+                  e.target.value !== "CUSTO_VARIAVEL"
+                ) {
+                  setTipoDespesa("");
+                }
+              }}
+              className="input-base"
+            >
+              <option value="">Selecione a categoria...</option>
+              {categoriaOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(categoria === "CUSTO_FIXO" || categoria === "CUSTO_VARIAVEL") && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Tipo de Despesa
+              </label>
+              <select
+                value={tipoDespesa}
+                onChange={(e) => setTipoDespesa(e.target.value)}
+                className="input-base"
+              >
+                <option value="">Selecione o tipo...</option>
+                {tipoDespesaOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              Data da baixa
+            </label>
+            <input
+              type="date"
+              value={dataBaixa}
+              onChange={(e) => setDataBaixa(e.target.value)}
+              className="input-base"
+            />
+          </div>
+
+          {isMaisQuiosque && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Projeto
+              </label>
+              <select
+                value={projetoId}
+                onChange={(e) => setProjetoId(e.target.value)}
+                className="input-base"
+              >
+                <option value="">Selecione o projeto...</option>
+                {projetos.map((projeto) => (
+                  <option key={projeto.id} value={projeto.id}>
+                    {projeto.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {isGiraKids && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Subcategoria
+              </label>
+              <select
+                value={subcategoria}
+                onChange={(e) => setSubcategoria(e.target.value)}
+                className="input-base"
+              >
+                <option value="">Selecione a subcategoria...</option>
+                {SUBCATEGORIAS_GIRAKIDS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {errorMessage && (
+          <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-3 py-2">
+            {errorMessage}
+          </p>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="btn-ghost flex-1">
+            Cancelar
+          </button>
+          <button
+            onClick={() =>
+              onConfirm(item, {
+                contaId,
+                categoria,
+                tipoDespesa: tipoDespesa || undefined,
+                projetoId: projetoId || undefined,
+                subcategoria: subcategoria || undefined,
+                data: dataBaixa,
+              })
+            }
+            disabled={!canSubmit || isLoading}
+            className="btn-primary flex-1"
+          >
+            {isLoading ? "Confirmando..." : "Confirmar Baixa"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ContaDetailModal({ conta, onClose, onBaixa, onEdit, onDelete }) {
   if (!conta) return null;
@@ -261,6 +507,7 @@ export default function ContasPagarPage() {
   const [prioridadeFiltro, setPrioridadeFiltro] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [viewDetails, setViewDetails] = useState(null);
+  const [baixaItem, setBaixaItem] = useState(null);
 
   const { data: empresas = [] } = useEmpresas();
   const qc = useQueryClient();
@@ -292,6 +539,28 @@ export default function ContasPagarPage() {
       qc.invalidateQueries({ queryKey: ["agenda"] });
     },
   });
+
+  const baixaMutation = useMutation({
+    mutationFn: ({ item, payload }) =>
+      agendaApi.baixar(item.id, {
+        contaId: Number(payload.contaId),
+        categoria: payload.categoria,
+        tipoDespesa: payload.tipoDespesa || undefined,
+        projetoId: payload.projetoId ? Number(payload.projetoId) : undefined,
+        subcategoria: payload.subcategoria || undefined,
+        data: payload.data || undefined,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      setBaixaItem(null);
+      setViewDetails(null);
+    },
+  });
+
+  function handleBaixa(item, payload) {
+    baixaMutation.mutate({ item, payload });
+  }
 
   const stats = useMemo(() => {
     const total = contas.reduce((s, c) => s + Number(c.valor), 0);
@@ -570,12 +839,25 @@ export default function ContasPagarPage() {
         <ContaDetailModal
           conta={viewDetails}
           onClose={() => setViewDetails(null)}
-          onBaixa={() => {}}
+          onBaixa={(item) => setBaixaItem(item)}
           onEdit={() => {}}
           onDelete={(id) => {
             deleteMutation.mutate(id);
             setViewDetails(null);
           }}
+        />
+      )}
+
+      {baixaItem && (
+        <DarBaixaModal
+          item={baixaItem}
+          onConfirm={handleBaixa}
+          onCancel={() => setBaixaItem(null)}
+          isLoading={baixaMutation.isPending}
+          errorMessage={
+            baixaMutation.error?.response?.data?.message ||
+            (baixaMutation.isError ? "Erro ao dar baixa." : "")
+          }
         />
       )}
     </div>
