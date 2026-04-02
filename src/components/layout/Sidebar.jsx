@@ -8,8 +8,8 @@ import {
   PieChart,
   Settings,
   LogOut,
-  Building2,
 } from "lucide-react";
+import logoGrupoGk from "../../assets/Logo Grupo Gk .png";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { cn } from "../../lib/utils.js";
 
@@ -33,8 +33,12 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200 dark:border-white/5">
-        <div className="w-9 h-9 rounded-xl bg-linear-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">
-          <Building2 size={18} className="text-white" />
+        <div className="w-10 h-10 rounded-xl overflow-hidden ring-1 ring-slate-300/70 dark:ring-white/10 shadow-lg bg-slate-100 dark:bg-slate-900">
+          <img
+            src={logoGrupoGk}
+            alt="Logo Grupo GK"
+            className="w-full h-full object-cover"
+          />
         </div>
         <div>
           <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
