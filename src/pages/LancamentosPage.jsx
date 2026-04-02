@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import MovimentacaoForm from "../components/forms/MovimentacaoForm.jsx";
 import {
   useContas,
   useEmpresas,
   useMovimentacoes,
 } from "../hooks/useFinanceiro.js";
+import { movimentacoesApi } from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
 import { Input, Select } from "../components/ui/FormField.jsx";
 
@@ -94,6 +96,7 @@ function resolveContaLabel(item) {
 }
 
 export default function LancamentosPage() {
+  const qc = useQueryClient();
   const [draftFilters, setDraftFilters] = useState(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(INITIAL_FILTERS);
 
@@ -114,6 +117,14 @@ export default function LancamentosPage() {
 
   const items = historico?.items ?? [];
   const pagination = historico?.pagination;
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => movimentacoesApi.remover(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["movimentacoes"] });
+      qc.invalidateQueries({ queryKey: ["agenda"] });
+    },
+  });
 
   function setFilter(field) {
     return (e) => {
@@ -142,6 +153,18 @@ export default function LancamentosPage() {
 
   function changePage(nextPage) {
     setAppliedFilters((prev) => ({ ...prev, page: nextPage }));
+  }
+
+  function handleDelete(item) {
+    const ok = window.confirm(
+      `Excluir lançamento previsto de ${formatCurrency(item.valor)} em ${formatDate(item.data)}?`,
+    );
+
+    if (!ok) {
+      return;
+    }
+
+    deleteMutation.mutate(item.id);
   }
 
   return (
@@ -277,6 +300,13 @@ export default function LancamentosPage() {
             </p>
           )}
 
+          {deleteMutation.isError && (
+            <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+              {deleteMutation.error?.response?.data?.message ??
+                "Erro ao excluir movimentação."}
+            </p>
+          )}
+
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full min-w-230 text-sm">
               <thead className="bg-slate-900/60 text-slate-400">
@@ -296,13 +326,14 @@ export default function LancamentosPage() {
                   </th>
                   <th className="px-3 py-2 text-right font-medium">Valor</th>
                   <th className="px-3 py-2 text-left font-medium">Status</th>
+                  <th className="px-3 py-2 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading && (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-3 py-8 text-center text-slate-500"
                     >
                       Carregando histórico...
@@ -313,7 +344,7 @@ export default function LancamentosPage() {
                 {!isLoading && items.length === 0 && (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-3 py-8 text-center text-slate-500"
                     >
                       Nenhuma movimentação encontrada para os filtros aplicados.
@@ -342,6 +373,20 @@ export default function LancamentosPage() {
                         {formatCurrency(item.valor)}
                       </td>
                       <td className="px-3 py-2">{item.status}</td>
+                      <td className="px-3 py-2 text-right">
+                        {item.status === "PREVISTO" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item)}
+                            disabled={deleteMutation.isPending}
+                            className="btn-ghost text-red-400 hover:text-red-300"
+                          >
+                            Excluir
+                          </button>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
               </tbody>

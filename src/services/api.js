@@ -50,6 +50,7 @@ export const dashboardApi = {
 export const movimentacoesApi = {
   criar: (payload) => api.post("/movimentacoes", payload),
   listar: (params) => api.get("/movimentacoes", { params }),
+  remover: (id) => api.delete(`/movimentacoes/${id}`),
 };
 
 // ─── Agenda ──────────────────────────────────────────────────────────────────
