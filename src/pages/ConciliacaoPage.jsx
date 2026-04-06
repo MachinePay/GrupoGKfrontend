@@ -24,6 +24,18 @@ const TIPOS_DESPESA_AJUSTE = [
   { value: "CUSTOS_OPERACIONAIS", label: "Custos Operacionais" },
 ];
 
+const FILTROS_SENTIDO = [
+  { value: "TODOS", label: "Todos" },
+  { value: "GASTOS", label: "Gastos (Negativo)" },
+  { value: "ENTRADAS", label: "Entradas (Positivo)" },
+];
+
+function getSentidoItem(item) {
+  if (item?.tipo === "PAGAR") return "GASTOS";
+  if (item?.tipo === "RECEBER") return "ENTRADAS";
+  return "TODOS";
+}
+
 function buildFormState(item) {
   return {
     contaId: "",
@@ -41,6 +53,7 @@ export default function ConciliacaoPage() {
     item: null,
     mode: "confirmar",
   });
+  const [filtroSentido, setFiltroSentido] = useState("TODOS");
   const [form, setForm] = useState(() => buildFormState(null));
 
   const { data: empresasIntegradasData = {} } = useEmpresasIntegradas();
@@ -84,7 +97,14 @@ export default function ConciliacaoPage() {
     () => pendenciasData?.dados ?? [],
     [pendenciasData],
   );
-  const total = pendenciasData?.total ?? 0;
+
+  const pendenciasFiltradas = useMemo(() => {
+    if (filtroSentido === "TODOS") {
+      return pendencias;
+    }
+
+    return pendencias.filter((item) => getSentidoItem(item) === filtroSentido);
+  }, [filtroSentido, pendencias]);
 
   // Mutations
   const approveMutation = useMutation({
@@ -166,8 +186,9 @@ export default function ConciliacaoPage() {
   }
 
   const valorTotalPendente = useMemo(
-    () => pendencias.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0),
-    [pendencias],
+    () =>
+      pendenciasFiltradas.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0),
+    [pendenciasFiltradas],
   );
 
   return (
@@ -231,6 +252,16 @@ export default function ConciliacaoPage() {
           </button>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Select
+            label="Filtro de Valor"
+            value={filtroSentido}
+            onChange={(e) => setFiltroSentido(e.target.value)}
+            options={FILTROS_SENTIDO}
+            placeholder="Todos"
+          />
+        </div>
+
         {syncMutation.isError && (
           <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-4 py-2">
             Erro na sincronização:{" "}
@@ -252,7 +283,9 @@ export default function ConciliacaoPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Total Pendente</p>
-            <p className="text-2xl font-bold text-white mt-1">{total}</p>
+            <p className="text-2xl font-bold text-white mt-1">
+              {pendenciasFiltradas.length}
+            </p>
             <p className="text-xs text-slate-500 mt-2">item(ns)</p>
           </div>
 
@@ -275,7 +308,7 @@ export default function ConciliacaoPage() {
       {/* Lista de Pendências */}
       <div className="glass card-shadow rounded-2xl p-5 space-y-3">
         <h2 className="text-base font-semibold text-white">
-          Itens Pendentes ({total})
+          Itens Pendentes ({pendenciasFiltradas.length})
         </h2>
 
         {!selectedEmpresaIdResolved && (
@@ -284,16 +317,16 @@ export default function ConciliacaoPage() {
           </p>
         )}
 
-        {selectedEmpresaIdResolved && pendencias.length === 0 && (
+        {selectedEmpresaIdResolved && pendenciasFiltradas.length === 0 && (
           <p className="text-sm text-slate-400 py-8 text-center">
             Nenhum item pendente. Clique em "Sincronizar{" "}
             {origemSelecionadaLabel}" para buscar novos dados.
           </p>
         )}
 
-        {pendencias.length > 0 && (
+        {pendenciasFiltradas.length > 0 && (
           <div className="space-y-2">
-            {pendencias.map((item) => (
+            {pendenciasFiltradas.map((item) => (
               <div
                 key={item.id}
                 className="border border-white/10 rounded-lg p-4 space-y-3 hover:border-white/20 transition"
@@ -354,7 +387,20 @@ export default function ConciliacaoPage() {
                   </div>
                   <div>
                     <p className="text-slate-500">Valor</p>
-                    <p className="font-medium text-white">
+                    <p
+                      className={`font-medium ${
+                        item.tipo === "PAGAR"
+                          ? "text-red-300"
+                          : item.tipo === "RECEBER"
+                            ? "text-emerald-300"
+                            : "text-white"
+                      }`}
+                    >
+                      {item.tipo === "PAGAR"
+                        ? "- "
+                        : item.tipo === "RECEBER"
+                          ? "+ "
+                          : ""}
                       {formatCurrency(item.valor)}
                     </p>
                   </div>
