@@ -156,9 +156,12 @@ export default function LancamentosPage() {
   }
 
   function handleDelete(item) {
-    const ok = window.confirm(
-      `Excluir lançamento previsto de ${formatCurrency(item.valor)} em ${formatDate(item.data)}?`,
-    );
+    const isRealizado = item.status === "REALIZADO";
+    const message = isRealizado
+      ? `Excluir lançamento realizado de ${formatCurrency(item.valor)} em ${formatDate(item.data)}?\n\nO saldo será estornado automaticamente.`
+      : `Excluir lançamento previsto de ${formatCurrency(item.valor)} em ${formatDate(item.data)}?`;
+
+    const ok = window.confirm(message);
 
     if (!ok) {
       return;
@@ -374,18 +377,14 @@ export default function LancamentosPage() {
                       </td>
                       <td className="px-3 py-2">{item.status}</td>
                       <td className="px-3 py-2 text-right">
-                        {item.status === "PREVISTO" ? (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item)}
-                            disabled={deleteMutation.isPending}
-                            className="btn-ghost text-red-400 hover:text-red-300"
-                          >
-                            Excluir
-                          </button>
-                        ) : (
-                          <span className="text-slate-500">-</span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item)}
+                          disabled={deleteMutation.isPending}
+                          className="btn-ghost text-red-400 hover:text-red-300"
+                        >
+                          Excluir
+                        </button>
                       </td>
                     </tr>
                   ))}
