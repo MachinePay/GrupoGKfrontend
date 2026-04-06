@@ -8,10 +8,23 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { useEmpresas, useEmpresaDashboard } from "../../hooks/useFinanceiro.js";
+import { useQueries } from "@tanstack/react-query";
+import { useEmpresas } from "../../hooks/useFinanceiro.js";
+import { dashboardApi } from "../../services/api.js";
 import { formatCurrency } from "../../lib/utils.js";
 
-const EMPRESA_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b"];
+const EMPRESA_COLORS = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#06b6d4",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#14b8a6",
+  "#84cc16",
+  "#f97316",
+  "#a855f7",
+];
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -31,26 +44,36 @@ function CustomTooltip({ active, payload, label }) {
 export default function EmpresaChartSection() {
   const { data: empresas = [], isLoading } = useEmpresas();
 
-  const ids = empresas.slice(0, 5).map((e) => e.id);
-  const q0 = useEmpresaDashboard(ids[0]);
-  const q1 = useEmpresaDashboard(ids[1]);
-  const q2 = useEmpresaDashboard(ids[2]);
-  const q3 = useEmpresaDashboard(ids[3]);
-  const q4 = useEmpresaDashboard(ids[4]);
+  const queries = useQueries({
+    queries: empresas.map((empresa) => ({
+      queryKey: ["dashboard", "empresa", empresa.id],
+      queryFn: () => dashboardApi.empresa(empresa.id).then((r) => r.data),
+      enabled: !!empresa?.id,
+      staleTime: 60_000,
+    })),
+  });
 
-  const queries = [q0, q1, q2, q3, q4];
-  const allReady = queries.some((q) => q.data);
+  const isLoadingEmpresas = queries.some((q) => q.isLoading);
+  const hasAnyData = queries.some((q) => q.data);
 
-  const chartData = empresas.slice(0, 5).map((empresa, i) => ({
+  const chartData = empresas.map((empresa, i) => ({
     nome: empresa.nome,
     Entradas: Number(queries[i]?.data?.totalEntradas ?? 0),
     Saidas: Number(queries[i]?.data?.totalSaidas ?? 0),
   }));
 
-  if (isLoading || !allReady) {
+  if (isLoading || (isLoadingEmpresas && !hasAnyData)) {
     return (
       <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
         Carregando dados por empresa...
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
+        Nenhuma empresa cadastrada para exibir no gráfico.
       </div>
     );
   }
@@ -65,6 +88,10 @@ export default function EmpresaChartSection() {
         <XAxis
           dataKey="nome"
           tick={{ fill: "#94a3b8", fontSize: 11 }}
+          interval={0}
+          angle={-15}
+          textAnchor="end"
+          height={56}
           axisLine={false}
           tickLine={false}
         />
@@ -81,7 +108,7 @@ export default function EmpresaChartSection() {
         />
         <Bar dataKey="Entradas" radius={[4, 4, 0, 0]} fill="#3b82f6">
           {chartData.map((_, i) => (
-            <Cell key={i} fill={EMPRESA_COLORS[i]} />
+            <Cell key={i} fill={EMPRESA_COLORS[i % EMPRESA_COLORS.length]} />
           ))}
         </Bar>
         <Bar
