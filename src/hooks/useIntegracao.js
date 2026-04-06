@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { integracaoApi } from "../services/api.js";
 
+export function useEmpresasIntegradas() {
+  return useQuery({
+    queryKey: ["integracao", "empresas-integradas"],
+    queryFn: () => integracaoApi.listarEmpresasIntegradas().then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+}
+
 /**
  * Hook para listar itens pendentes de aprovação da integração AgarraMais
  * @param {number} empresaId ID da empresa

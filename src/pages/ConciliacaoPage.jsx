@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { usePendenciasIntegracao } from "../hooks/useIntegracao.js";
-import { useEmpresas, useContas } from "../hooks/useFinanceiro.js";
+import {
+  useEmpresasIntegradas,
+  usePendenciasIntegracao,
+} from "../hooks/useIntegracao.js";
+import { useContas } from "../hooks/useFinanceiro.js";
 import { integracaoApi } from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
 import { Input, Select } from "../components/ui/FormField.jsx";
@@ -40,10 +43,41 @@ export default function ConciliacaoPage() {
   });
   const [form, setForm] = useState(() => buildFormState(null));
 
-  const { data: empresas = [] } = useEmpresas();
-  const { data: contas = [] } = useContas(selectedEmpresaId || undefined);
+  const { data: empresasIntegradasData = {} } = useEmpresasIntegradas();
+  const empresasIntegradas = useMemo(
+    () => empresasIntegradasData?.empresas ?? [],
+    [empresasIntegradasData],
+  );
+  const selectedEmpresaIdResolved = useMemo(() => {
+    if (!empresasIntegradas.length) return "";
+
+    const selectedIsValid = empresasIntegradas.some(
+      (empresa) => String(empresa.id) === String(selectedEmpresaId),
+    );
+
+    if (selectedEmpresaId && selectedIsValid) {
+      return String(selectedEmpresaId);
+    }
+
+    return String(empresasIntegradas[0].id);
+  }, [empresasIntegradas, selectedEmpresaId]);
+
+  const empresaSelecionada = useMemo(
+    () =>
+      empresasIntegradas.find(
+        (empresa) => String(empresa.id) === String(selectedEmpresaIdResolved),
+      ) ?? null,
+    [empresasIntegradas, selectedEmpresaIdResolved],
+  );
+
+  const origemSelecionadaLabel =
+    empresaSelecionada?.integracaoLabel || "Integração";
+
+  const { data: contas = [] } = useContas(
+    selectedEmpresaIdResolved || undefined,
+  );
   const { data: pendenciasData = {} } = usePendenciasIntegracao(
-    selectedEmpresaId ? Number(selectedEmpresaId) : null,
+    selectedEmpresaIdResolved ? Number(selectedEmpresaIdResolved) : null,
   );
 
   const pendencias = useMemo(
@@ -73,15 +107,18 @@ export default function ConciliacaoPage() {
 
   const syncMutation = useMutation({
     mutationFn: () =>
-      integracaoApi.syncAgarraMais({ empresaId: Number(selectedEmpresaId) }),
+      integracaoApi.syncIntegracao(empresaSelecionada?.integracao, {
+        empresaId: Number(selectedEmpresaIdResolved),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pendencias-integracao"] });
+      qc.invalidateQueries({ queryKey: ["integracao", "empresas-integradas"] });
     },
   });
 
   // Handlers
   function handleSync() {
-    if (!selectedEmpresaId) return;
+    if (!selectedEmpresaIdResolved) return;
     syncMutation.mutate();
   }
 
@@ -139,8 +176,8 @@ export default function ConciliacaoPage() {
       <div>
         <h1 className="text-xl font-bold text-white">Conciliação de Gastos</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Itens importados automaticamente da AgarraMais aguardando sua
-          conferência e aprovação para entrar no fluxo de caixa.
+          Itens importados automaticamente da integração selecionada aguardando
+          sua conferência e aprovação para entrar no fluxo de caixa.
         </p>
       </div>
 
@@ -148,8 +185,12 @@ export default function ConciliacaoPage() {
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
         <p className="text-sm text-blue-200">
           <span className="font-semibold">Informação:</span> Itens marcados com{" "}
-          <Badge label="VIA AGARRAMAIS" variant="agarramais" /> são automáticos
-          e precisam de sua conferência antes de entrarem no sistema financeiro.
+          <Badge
+            label={`VIA ${origemSelecionadaLabel.toUpperCase()}`}
+            variant="agarramais"
+          />{" "}
+          são automáticos e precisam de sua conferência antes de entrarem no
+          sistema financeiro.
         </p>
       </div>
 
@@ -158,26 +199,44 @@ export default function ConciliacaoPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Empresa"
-            value={selectedEmpresaId}
+            value={selectedEmpresaIdResolved}
             onChange={(e) => setSelectedEmpresaId(e.target.value)}
-            options={empresas.map((e) => ({ value: e.id, label: e.nome }))}
-            placeholder="Selecione uma empresa"
+            options={empresasIntegradas.map((e) => ({
+              value: String(e.id),
+              label: e.nome,
+            }))}
+            placeholder={
+              empresasIntegradas.length
+                ? "Selecione uma empresa"
+                : "Nenhuma integração ativa"
+            }
           />
 
           <button
             onClick={handleSync}
-            disabled={!selectedEmpresaId || syncMutation.isPending}
+            disabled={
+              !selectedEmpresaIdResolved ||
+              !empresaSelecionada?.integracao ||
+              !empresaSelecionada?.syncDisponivel ||
+              !empresasIntegradas.length ||
+              syncMutation.isPending
+            }
             className="btn-primary mt-6"
           >
-            {syncMutation.isPending
-              ? "Sincronizando..."
-              : "Sincronizar AgarraMais"}
+            {!empresaSelecionada?.syncDisponivel
+              ? "Sincronização indisponível"
+              : syncMutation.isPending
+                ? "Sincronizando..."
+                : `Sincronizar ${origemSelecionadaLabel}`}
           </button>
         </div>
 
         {syncMutation.isError && (
           <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-4 py-2">
-            Erro na sincronização: {syncMutation.error?.response?.data?.message}
+            Erro na sincronização:{" "}
+            {syncMutation.error?.response?.data?.message ||
+              syncMutation.error?.message ||
+              "falha ao sincronizar"}
           </p>
         )}
 
@@ -189,7 +248,7 @@ export default function ConciliacaoPage() {
       </div>
 
       {/* Summary */}
-      {selectedEmpresaId && (
+      {selectedEmpresaIdResolved && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Total Pendente</p>
@@ -206,7 +265,9 @@ export default function ConciliacaoPage() {
 
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Origem</p>
-            <p className="text-2xl font-bold text-blue-400 mt-1">AgarraMais</p>
+            <p className="text-2xl font-bold text-blue-400 mt-1">
+              {origemSelecionadaLabel}
+            </p>
           </div>
         </div>
       )}
@@ -217,16 +278,16 @@ export default function ConciliacaoPage() {
           Itens Pendentes ({total})
         </h2>
 
-        {!selectedEmpresaId && (
+        {!selectedEmpresaIdResolved && (
           <p className="text-sm text-slate-400 py-8 text-center">
             Selecione uma empresa para visualizar pendências
           </p>
         )}
 
-        {selectedEmpresaId && pendencias.length === 0 && (
+        {selectedEmpresaIdResolved && pendencias.length === 0 && (
           <p className="text-sm text-slate-400 py-8 text-center">
-            Nenhum item pendente. Clique em "Sincronizar AgarraMais" para buscar
-            novos dados.
+            Nenhum item pendente. Clique em "Sincronizar{" "}
+            {origemSelecionadaLabel}" para buscar novos dados.
           </p>
         )}
 
@@ -249,7 +310,10 @@ export default function ConciliacaoPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Badge label="VIA AGARRAMAIS" variant="agarramais" />
+                    <Badge
+                      label={`VIA ${origemSelecionadaLabel.toUpperCase()}`}
+                      variant="agarramais"
+                    />
                     <Badge
                       label={
                         item.classificacaoExterna === "RELATORIO"

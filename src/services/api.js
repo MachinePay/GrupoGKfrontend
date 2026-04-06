@@ -83,6 +83,20 @@ export const cadastrosApi = {
 
 // ─── Integração AgarraMais ───────────────────────────────────────────────────
 export const integracaoApi = {
+  listarEmpresasIntegradas: () => api.get("/integracao/empresas-integradas"),
+
+  syncIntegracao: (integracao, params) => {
+    if (integracao === "agarramais") {
+      return api.get("/integracao/agarramais/sync", {
+        params: typeof params === "object" ? params : { empresaId: params },
+      });
+    }
+
+    return Promise.reject(
+      new Error(`Integração ${integracao} ainda não possui sincronização.`),
+    );
+  },
+
   syncAgarraMais: (params) =>
     api.get("/integracao/agarramais/sync", {
       params: typeof params === "object" ? params : { empresaId: params },
