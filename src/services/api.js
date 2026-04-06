@@ -83,4 +83,28 @@ export const cadastrosApi = {
   criarProjeto: (payload) => api.post("/cadastros/projetos", payload),
 };
 
+// ─── Integração AgarraMais ───────────────────────────────────────────────────
+export const integracaoApi = {
+  syncAgarraMais: (params) =>
+    api.get("/integracao/agarramais/sync", {
+      params: typeof params === "object" ? params : { empresaId: params },
+    }),
+
+  // Lista itens pendentes de aprovação
+  listarPendencias: (empresaId) =>
+    api.get("/integracao/pendencias", { params: { empresaId } }),
+
+  // Aprova uma pendência e cria movimentação real
+  aprovarPendencia: (agendaId, payload) =>
+    api.post(`/integracao/aprovar/${agendaId}`, payload),
+
+  // Rejeita uma pendência
+  rejeitarPendencia: (agendaId, motivo) =>
+    api.post(`/integracao/rejeitar/${agendaId}`, { motivo }),
+
+  // Obtém estatísticas de pendências
+  obterEstatisticas: (params) =>
+    api.get("/integracao/estatisticas", { params }),
+};
+
 export default api;

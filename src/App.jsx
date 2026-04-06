@@ -9,6 +9,7 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
 const LancamentosPage = lazy(() => import("./pages/LancamentosPage.jsx"));
 const CalendarioPage = lazy(() => import("./pages/CalendarioPage.jsx"));
 const ContasPagarPage = lazy(() => import("./pages/ContasPagarPage.jsx"));
+const ConciliacaoPage = lazy(() => import("./pages/ConciliacaoPage.jsx"));
 const FluxoSaldoPage = lazy(() => import("./pages/FluxoSaldoPage.jsx"));
 const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage.jsx"));
 const ConfiguracoesPage = lazy(() => import("./pages/ConfiguracoesPage.jsx"));
@@ -44,6 +45,7 @@ function AppRoutes() {
           <Route index element={<DashboardPage />} />
           <Route path="lancamentos" element={<LancamentosPage />} />
           <Route path="calendario" element={<CalendarioPage />} />
+          <Route path="conciliacao" element={<ConciliacaoPage />} />
           <Route path="contas-pagar" element={<ContasPagarPage />} />
           <Route path="fluxo-saldo" element={<FluxoSaldoPage />} />
           <Route path="relatorios" element={<RelatoriosPage />} />

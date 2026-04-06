@@ -1,0 +1,482 @@
+import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePendenciasIntegracao } from "../hooks/useIntegracao.js";
+import { useEmpresas, useContas } from "../hooks/useFinanceiro.js";
+import { integracaoApi } from "../services/api.js";
+import { formatCurrency, formatDate } from "../lib/utils.js";
+import { Input, Select } from "../components/ui/FormField.jsx";
+import Badge from "../components/ui/Badge.jsx";
+
+const CATEGORIAS_AJUSTE = [
+  { value: "CUSTO_FIXO", label: "Custo Fixo" },
+  { value: "CUSTO_VARIAVEL", label: "Custo Variavel" },
+  { value: "FORNECEDOR", label: "Fornecedor" },
+];
+
+const TIPOS_DESPESA_AJUSTE = [
+  { value: "DESPESAS_ADMINISTRATIVAS", label: "Despesas Administrativas" },
+  { value: "RETIRADA_SOCIOS", label: "Retirada de Socios" },
+  { value: "FOLHA_PAGAMENTO", label: "Folha de Pagamento" },
+  { value: "DESPESAS_DIVERSAS", label: "Despesas Diversas" },
+  { value: "CUSTOS_OPERACIONAIS", label: "Custos Operacionais" },
+];
+
+function buildFormState(item) {
+  return {
+    contaId: "",
+    valorAjustado: item ? String(item.valor ?? "") : "",
+    categoriaAjustada: "CUSTO_FIXO",
+    tipoDespesaAjustada: "CUSTOS_OPERACIONAIS",
+  };
+}
+
+export default function ConciliacaoPage() {
+  const qc = useQueryClient();
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+  const [modalState, setModalState] = useState({
+    item: null,
+    mode: "confirmar",
+  });
+  const [form, setForm] = useState(() => buildFormState(null));
+
+  const { data: empresas = [] } = useEmpresas();
+  const { data: contas = [] } = useContas(selectedEmpresaId || undefined);
+  const { data: pendenciasData = {} } = usePendenciasIntegracao(
+    selectedEmpresaId ? Number(selectedEmpresaId) : null,
+  );
+
+  const pendencias = useMemo(
+    () => pendenciasData?.dados ?? [],
+    [pendenciasData],
+  );
+  const total = pendenciasData?.total ?? 0;
+
+  // Mutations
+  const approveMutation = useMutation({
+    mutationFn: ({ agendaId, payload }) =>
+      integracaoApi.aprovarPendencia(agendaId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pendencias-integracao"] });
+      setModalState({ item: null, mode: "confirmar" });
+      setForm(buildFormState(null));
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ agendaId, motivo }) =>
+      integracaoApi.rejeitarPendencia(agendaId, motivo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pendencias-integracao"] });
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: () =>
+      integracaoApi.syncAgarraMais({ empresaId: Number(selectedEmpresaId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pendencias-integracao"] });
+    },
+  });
+
+  // Handlers
+  function handleSync() {
+    if (!selectedEmpresaId) return;
+    syncMutation.mutate();
+  }
+
+  function abrirModal(item, mode) {
+    setModalState({ item, mode });
+    setForm(buildFormState(item));
+  }
+
+  function fecharModal() {
+    setModalState({ item: null, mode: "confirmar" });
+    setForm(buildFormState(null));
+  }
+
+  function handleApprove() {
+    if (!modalState.item) {
+      return;
+    }
+
+    if (modalState.item.permiteAprovacaoFinanceira && !form.contaId) {
+      alert("Selecione uma conta bancária para vincular");
+      return;
+    }
+
+    approveMutation.mutate({
+      agendaId: modalState.item.id,
+      payload: {
+        contaId: form.contaId ? Number(form.contaId) : undefined,
+        valorAjustado:
+          modalState.mode === "ajustar" && form.valorAjustado
+            ? Number(form.valorAjustado)
+            : undefined,
+        categoriaAjustada:
+          modalState.mode === "ajustar" ? form.categoriaAjustada : undefined,
+        tipoDespesaAjustada:
+          modalState.mode === "ajustar" ? form.tipoDespesaAjustada : undefined,
+      },
+    });
+  }
+
+  function handleReject(agendaId) {
+    const motivo = prompt("Qual o motivo da rejeição?");
+    if (motivo) {
+      rejectMutation.mutate({ agendaId, motivo });
+    }
+  }
+
+  const valorTotalPendente = useMemo(
+    () => pendencias.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0),
+    [pendencias],
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-white">Conciliação de Gastos</h1>
+        <p className="text-sm text-slate-500 mt-0.5">
+          Itens importados automaticamente da AgarraMais aguardando sua
+          conferência e aprovação para entrar no fluxo de caixa.
+        </p>
+      </div>
+
+      {/* Legenda */}
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+        <p className="text-sm text-blue-200">
+          <span className="font-semibold">Informação:</span> Itens marcados com{" "}
+          <Badge label="VIA AGARRAMAIS" variant="agarramais" /> são automáticos
+          e precisam de sua conferência antes de entrarem no sistema financeiro.
+        </p>
+      </div>
+
+      {/* Controls */}
+      <div className="glass card-shadow rounded-2xl p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Select
+            label="Empresa"
+            value={selectedEmpresaId}
+            onChange={(e) => setSelectedEmpresaId(e.target.value)}
+            options={empresas.map((e) => ({ value: e.id, label: e.nome }))}
+            placeholder="Selecione uma empresa"
+          />
+
+          <button
+            onClick={handleSync}
+            disabled={!selectedEmpresaId || syncMutation.isPending}
+            className="btn-primary mt-6"
+          >
+            {syncMutation.isPending
+              ? "Sincronizando..."
+              : "Sincronizar AgarraMais"}
+          </button>
+        </div>
+
+        {syncMutation.isError && (
+          <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-4 py-2">
+            Erro na sincronização: {syncMutation.error?.response?.data?.message}
+          </p>
+        )}
+
+        {syncMutation.isSuccess && (
+          <p className="text-sm text-green-400 bg-green-500/10 rounded-lg px-4 py-2">
+            Sincronização concluída
+          </p>
+        )}
+      </div>
+
+      {/* Summary */}
+      {selectedEmpresaId && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="glass card-shadow rounded-2xl p-4">
+            <p className="text-sm text-slate-400">Total Pendente</p>
+            <p className="text-2xl font-bold text-white mt-1">{total}</p>
+            <p className="text-xs text-slate-500 mt-2">item(ns)</p>
+          </div>
+
+          <div className="glass card-shadow rounded-2xl p-4">
+            <p className="text-sm text-slate-400">Valor Total</p>
+            <p className="text-2xl font-bold text-white mt-1">
+              {formatCurrency(valorTotalPendente)}
+            </p>
+          </div>
+
+          <div className="glass card-shadow rounded-2xl p-4">
+            <p className="text-sm text-slate-400">Origem</p>
+            <p className="text-2xl font-bold text-blue-400 mt-1">AgarraMais</p>
+          </div>
+        </div>
+      )}
+
+      {/* Lista de Pendências */}
+      <div className="glass card-shadow rounded-2xl p-5 space-y-3">
+        <h2 className="text-base font-semibold text-white">
+          Itens Pendentes ({total})
+        </h2>
+
+        {!selectedEmpresaId && (
+          <p className="text-sm text-slate-400 py-8 text-center">
+            Selecione uma empresa para visualizar pendências
+          </p>
+        )}
+
+        {selectedEmpresaId && pendencias.length === 0 && (
+          <p className="text-sm text-slate-400 py-8 text-center">
+            Nenhum item pendente. Clique em "Sincronizar AgarraMais" para buscar
+            novos dados.
+          </p>
+        )}
+
+        {pendencias.length > 0 && (
+          <div className="space-y-2">
+            {pendencias.map((item) => (
+              <div
+                key={item.id}
+                className="border border-white/10 rounded-lg p-4 space-y-3 hover:border-white/20 transition"
+              >
+                {/* Header do Item */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div>
+                      <p className="font-medium text-white">{item.titulo}</p>
+                      <p className="text-xs text-slate-400">
+                        {item.empresa?.nome}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge label="VIA AGARRAMAIS" variant="agarramais" />
+                    <Badge
+                      label={
+                        item.classificacaoExterna === "RELATORIO"
+                          ? "RELATORIO"
+                          : "GASTO FIXO"
+                      }
+                      variant={
+                        item.classificacaoExterna === "RELATORIO"
+                          ? "relatorio"
+                          : "default"
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedId(expandedId === item.id ? null : item.id)
+                      }
+                      className="text-slate-500 hover:text-slate-300 transition"
+                    >
+                      {expandedId === item.id ? "▼" : "▶"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Info do Item */}
+                <div className="grid grid-cols-4 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-500">Data</p>
+                    <p className="font-medium text-white">
+                      {formatDate(item.data)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Tipo</p>
+                    <p className="font-medium text-white">
+                      {item.classificacaoExterna}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Valor</p>
+                    <p className="font-medium text-white">
+                      {formatCurrency(item.valor)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Status</p>
+                    <Badge status={item.status} />
+                  </div>
+                </div>
+
+                {/* Detalhes */}
+                {item.descricao && (
+                  <p className="text-xs text-slate-400 border-t border-white/10 pt-3">
+                    {item.descricao}
+                  </p>
+                )}
+
+                {/* Expandido - Ações */}
+                {expandedId === item.id && (
+                  <div className="border-t border-white/10 pt-4 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {item.permiteAprovacaoFinanceira ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => abrirModal(item, "confirmar")}
+                            disabled={approveMutation.isPending}
+                            className="btn-primary"
+                          >
+                            Confirmar Gasto
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => abrirModal(item, "ajustar")}
+                            disabled={approveMutation.isPending}
+                            className="btn-ghost"
+                          >
+                            Ajustar
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => abrirModal(item, "confirmar")}
+                          disabled={approveMutation.isPending}
+                          className="btn-primary"
+                        >
+                          Marcar Conferido
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleReject(item.id)}
+                        disabled={rejectMutation.isPending}
+                        className="btn-ghost text-red-400 hover:text-red-300"
+                      >
+                        Rejeitar
+                      </button>
+                    </div>
+
+                    {(approveMutation.isError || rejectMutation.isError) && (
+                      <p className="text-xs text-red-400">
+                        Erro na operação. Tente novamente.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modalState.item && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  {modalState.mode === "ajustar"
+                    ? "Ajustar pendência"
+                    : modalState.item.permiteAprovacaoFinanceira
+                      ? "Confirmar gasto"
+                      : "Marcar relatório como conferido"}
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  {modalState.item.titulo}
+                </p>
+              </div>
+              <button type="button" onClick={fecharModal} className="btn-ghost">
+                Fechar
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input
+                label="Data"
+                value={formatDate(modalState.item.data)}
+                readOnly
+              />
+              <Input
+                label="Valor original"
+                value={formatCurrency(modalState.item.valor)}
+                readOnly
+              />
+              {modalState.item.permiteAprovacaoFinanceira && (
+                <Select
+                  label="Conta bancária"
+                  value={form.contaId}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, contaId: e.target.value }))
+                  }
+                  options={contas.map((c) => ({
+                    value: c.id,
+                    label: `${c.banco} - ${c.nome}`,
+                  }))}
+                  placeholder="Selecione a conta"
+                />
+              )}
+              {modalState.mode === "ajustar" &&
+                modalState.item.permiteAprovacaoFinanceira && (
+                  <>
+                    <Input
+                      label="Valor ajustado"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.valorAjustado}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          valorAjustado: e.target.value,
+                        }))
+                      }
+                    />
+                    <Select
+                      label="Categoria"
+                      value={form.categoriaAjustada}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          categoriaAjustada: e.target.value,
+                        }))
+                      }
+                      options={CATEGORIAS_AJUSTE}
+                    />
+                    <Select
+                      label="Tipo de despesa"
+                      value={form.tipoDespesaAjustada}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          tipoDespesaAjustada: e.target.value,
+                        }))
+                      }
+                      options={TIPOS_DESPESA_AJUSTE}
+                    />
+                  </>
+                )}
+            </div>
+
+            {modalState.item.descricao && (
+              <p className="text-sm text-slate-400 rounded-xl border border-white/10 p-3">
+                {modalState.item.descricao}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={fecharModal} className="btn-ghost">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+                className="btn-primary"
+              >
+                {approveMutation.isPending
+                  ? "Salvando..."
+                  : modalState.item.permiteAprovacaoFinanceira
+                    ? "Confirmar"
+                    : "Marcar conferido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
