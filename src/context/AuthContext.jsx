@@ -16,6 +16,21 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(loadStoredUser);
   const [token, setToken] = useState(() => localStorage.getItem("gk_token"));
 
+  const updateUser = useCallback((updater) => {
+    setUser((prevUser) => {
+      const nextUser =
+        typeof updater === "function" ? updater(prevUser) : updater;
+
+      if (nextUser) {
+        localStorage.setItem("gk_user", JSON.stringify(nextUser));
+      } else {
+        localStorage.removeItem("gk_user");
+      }
+
+      return nextUser;
+    });
+  }, []);
+
   const login = useCallback(async (email, senha) => {
     const { data } = await authApi.login({ email, senha });
     localStorage.setItem("gk_token", data.token);
@@ -36,7 +51,15 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, logout, isAdmin, isAuthenticated: !!token }}
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        updateUser,
+        isAdmin,
+        isAuthenticated: !!token,
+      }}
     >
       {children}
     </AuthContext.Provider>

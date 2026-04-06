@@ -32,6 +32,7 @@ export const authApi = {
   login: (payload) => api.post("/auth/login", payload),
   me: () => api.get("/auth/me"),
   changePassword: (payload) => api.patch("/auth/me/senha", payload),
+  updateTheme: (payload) => api.patch("/auth/me/tema", payload),
   listUsers: () => api.get("/auth/users"),
   createUser: (payload) => api.post("/auth/users", payload),
   toggleUser: (id) => api.patch(`/auth/users/${id}/status`),
