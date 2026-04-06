@@ -70,10 +70,7 @@ export const cadastrosApi = {
   atualizarEmpresa: (id, payload) =>
     api.patch(`/cadastros/empresas/${id}`, payload),
   removerEmpresa: (id) => api.delete(`/cadastros/empresas/${id}`),
-  listarContas: (empresaId) =>
-    api.get("/cadastros/contas-bancarias", {
-      params: empresaId ? { empresaId } : {},
-    }),
+  listarContas: () => api.get("/cadastros/contas-bancarias"),
   criarConta: (payload) => api.post("/cadastros/contas-bancarias", payload),
   atualizarConta: (id, payload) =>
     api.patch(`/cadastros/contas-bancarias/${id}`, payload),

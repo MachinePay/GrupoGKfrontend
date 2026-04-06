@@ -12,10 +12,10 @@ export function useEmpresas() {
   });
 }
 
-export function useContas(empresaId) {
+export function useContas() {
   return useQuery({
-    queryKey: ["contas", empresaId],
-    queryFn: () => cadastrosApi.listarContas(empresaId).then((r) => r.data),
+    queryKey: ["contas"],
+    queryFn: () => cadastrosApi.listarContas().then((r) => r.data),
     enabled: true,
   });
 }

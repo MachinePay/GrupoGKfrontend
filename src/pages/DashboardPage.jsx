@@ -93,7 +93,7 @@ export default function DashboardPage() {
             {contas.map((conta) => (
               <MiniCard
                 key={conta.id}
-                label={`${conta.banco} – ${conta.empresa.nome}`}
+                label={`${conta.banco} – ${conta.nome}`}
                 value={formatCurrency(conta.saldoAtual)}
               />
             ))}

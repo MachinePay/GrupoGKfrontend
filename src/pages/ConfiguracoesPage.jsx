@@ -214,20 +214,17 @@ function EmpresasTab() {
 
 /* ─────────────── Contas Bancárias ─────────────── */
 function ContasTab() {
-  const { data: empresas = [] } = useEmpresas();
   const qc = useQueryClient();
   const [form, setForm] = useState({
     nome: "",
     banco: "",
     saldoInicial: "",
-    empresaId: "",
   });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingForm, setEditingForm] = useState({
     nome: "",
     banco: "",
-    empresaId: "",
   });
 
   const { data: contas = [], isLoading } = useQuery({
@@ -240,7 +237,7 @@ function ContasTab() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contas-config"] });
       setShowForm(false);
-      setForm({ nome: "", banco: "", saldoInicial: "", empresaId: "" });
+      setForm({ nome: "", banco: "", saldoInicial: "" });
     },
   });
 
@@ -250,7 +247,7 @@ function ContasTab() {
       qc.invalidateQueries({ queryKey: ["contas-config"] });
       qc.invalidateQueries({ queryKey: ["dashboard", "contas"] });
       setEditingId(null);
-      setEditingForm({ nome: "", banco: "", empresaId: "" });
+      setEditingForm({ nome: "", banco: "" });
     },
   });
 
@@ -262,20 +259,17 @@ function ContasTab() {
     },
   });
 
-  const empresaOpts = empresas.map((e) => ({ value: e.id, label: e.nome }));
-
   function startEdit(conta) {
     setEditingId(conta.id);
     setEditingForm({
       nome: conta.nome,
       banco: conta.banco,
-      empresaId: String(conta.empresa?.id ?? ""),
     });
   }
 
   function cancelEdit() {
     setEditingId(null);
-    setEditingForm({ nome: "", banco: "", empresaId: "" });
+    setEditingForm({ nome: "", banco: "" });
   }
 
   function saveEdit() {
@@ -286,7 +280,6 @@ function ContasTab() {
       payload: {
         nome: editingForm.nome,
         banco: editingForm.banco,
-        empresaId: Number(editingForm.empresaId),
       },
     });
   }
@@ -338,22 +331,12 @@ function ContasTab() {
                 setForm((f) => ({ ...f, saldoInicial: e.target.value }))
               }
             />
-            <Select
-              label="Empresa"
-              options={empresaOpts}
-              value={form.empresaId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, empresaId: e.target.value }))
-              }
-              placeholder="Selecione…"
-            />
           </div>
           <button
             onClick={() =>
               createMutation.mutate({
                 ...form,
                 saldoAtual: Number(form.saldoInicial) || 0,
-                empresaId: Number(form.empresaId),
               })
             }
             className="btn-primary w-full"
@@ -409,17 +392,6 @@ function ContasTab() {
                     }))
                   }
                 />
-                <Select
-                  options={empresaOpts}
-                  value={editingForm.empresaId}
-                  onChange={(e) =>
-                    setEditingForm((prev) => ({
-                      ...prev,
-                      empresaId: e.target.value,
-                    }))
-                  }
-                  placeholder="Selecione…"
-                />
                 <div className="flex items-center gap-2 justify-end">
                   <button
                     type="button"
@@ -428,8 +400,7 @@ function ContasTab() {
                     disabled={
                       updateMutation.isPending ||
                       !editingForm.nome.trim() ||
-                      !editingForm.banco.trim() ||
-                      !editingForm.empresaId
+                      !editingForm.banco.trim()
                     }
                   >
                     Salvar
@@ -450,7 +421,6 @@ function ContasTab() {
                   <p className="text-sm text-white font-medium">
                     {c.banco} – {c.nome}
                   </p>
-                  <p className="text-xs text-slate-500">{c.empresa?.nome}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span
