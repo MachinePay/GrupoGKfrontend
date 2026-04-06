@@ -36,6 +36,22 @@ function getSentidoItem(item) {
   return "TODOS";
 }
 
+function extrairLojaItem(item) {
+  const descricao = String(item?.descricao || "");
+  const matchLojaDescricao = descricao.match(/(?:^|\|)\s*Loja:\s*([^|]+)/i);
+  if (matchLojaDescricao?.[1]) {
+    return matchLojaDescricao[1].trim();
+  }
+
+  const titulo = String(item?.titulo || "");
+  const partes = titulo.split(" - ");
+  if (partes.length > 1) {
+    return partes[partes.length - 1].trim();
+  }
+
+  return "Sem loja";
+}
+
 function buildFormState(item) {
   return {
     contaId: "",
@@ -54,6 +70,7 @@ export default function ConciliacaoPage() {
     mode: "confirmar",
   });
   const [filtroSentido, setFiltroSentido] = useState("TODOS");
+  const [filtroLoja, setFiltroLoja] = useState("TODAS");
   const [form, setForm] = useState(() => buildFormState(null));
 
   const { data: empresasIntegradasData = {} } = useEmpresasIntegradas();
@@ -98,13 +115,34 @@ export default function ConciliacaoPage() {
     [pendenciasData],
   );
 
+  const opcoesLoja = useMemo(() => {
+    const lojas = Array.from(
+      new Set(pendencias.map((item) => extrairLojaItem(item)).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+    return [
+      { value: "TODAS", label: "Todas" },
+      ...lojas.map((loja) => ({ value: loja, label: loja })),
+    ];
+  }, [pendencias]);
+
   const pendenciasFiltradas = useMemo(() => {
-    if (filtroSentido === "TODOS") {
-      return pendencias;
+    let resultado = pendencias;
+
+    if (filtroSentido !== "TODOS") {
+      resultado = resultado.filter(
+        (item) => getSentidoItem(item) === filtroSentido,
+      );
     }
 
-    return pendencias.filter((item) => getSentidoItem(item) === filtroSentido);
-  }, [filtroSentido, pendencias]);
+    if (filtroLoja !== "TODAS") {
+      resultado = resultado.filter(
+        (item) => extrairLojaItem(item) === filtroLoja,
+      );
+    }
+
+    return resultado;
+  }, [filtroLoja, filtroSentido, pendencias]);
 
   // Mutations
   const approveMutation = useMutation({
@@ -259,6 +297,13 @@ export default function ConciliacaoPage() {
             onChange={(e) => setFiltroSentido(e.target.value)}
             options={FILTROS_SENTIDO}
             placeholder="Todos"
+          />
+          <Select
+            label="Loja"
+            value={filtroLoja}
+            onChange={(e) => setFiltroLoja(e.target.value)}
+            options={opcoesLoja}
+            placeholder="Todas"
           />
         </div>
 
