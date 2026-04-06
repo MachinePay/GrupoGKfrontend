@@ -351,12 +351,20 @@ export default function ConciliacaoPage() {
                       label={
                         item.classificacaoExterna === "RELATORIO"
                           ? "RELATORIO"
-                          : "GASTO FIXO"
+                          : item.classificacaoExterna === "ENTRADA_BRUTA"
+                            ? "ENTRADA BRUTA"
+                            : item.classificacaoExterna === "CUSTO_DASHBOARD"
+                              ? "CUSTO DASHBOARD"
+                              : "GASTO FIXO"
                       }
                       variant={
                         item.classificacaoExterna === "RELATORIO"
                           ? "relatorio"
-                          : "default"
+                          : item.classificacaoExterna === "ENTRADA_BRUTA"
+                            ? "agarramais"
+                            : item.classificacaoExterna === "CUSTO_DASHBOARD"
+                              ? "default"
+                              : "default"
                       }
                     />
                     <button
