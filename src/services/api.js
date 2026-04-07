@@ -45,6 +45,7 @@ export const dashboardApi = {
   contas: () => api.get("/dashboards/contas"),
   bancos: () => api.get("/dashboards/bancos"),
   maisQuiosqueProjetos: () => api.get("/dashboards/maisquiosque/projetos"),
+  analytics: (params) => api.get("/relatorios/analytics", { params }),
 };
 
 // ─── Movimentações ───────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ const ContasPagarPage = lazy(() => import("./pages/ContasPagarPage.jsx"));
 const ConciliacaoPage = lazy(() => import("./pages/ConciliacaoPage.jsx"));
 const FluxoSaldoPage = lazy(() => import("./pages/FluxoSaldoPage.jsx"));
 const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage.jsx"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage.jsx"));
 const ConfiguracoesPage = lazy(() => import("./pages/ConfiguracoesPage.jsx"));
 
 function RouteFallback() {
@@ -49,6 +50,7 @@ function AppRoutes() {
           <Route path="contas-pagar" element={<ContasPagarPage />} />
           <Route path="fluxo-saldo" element={<FluxoSaldoPage />} />
           <Route path="relatorios" element={<RelatoriosPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
         </Route>
 

@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   ClipboardCheck,
+  BarChart3,
 } from "lucide-react";
 import logoGrupoGk from "../../assets/Logo Grupo Gk .png";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -22,6 +23,7 @@ const NAV = [
   { to: "/contas-pagar", label: "Contas a Pagar", Icon: Wallet },
   { to: "/fluxo-saldo", label: "Fluxo de Saldo", Icon: TrendingUp },
   { to: "/relatorios", label: "Relatórios", Icon: PieChart },
+  { to: "/analytics", label: "Analytics", Icon: BarChart3 },
   { to: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
