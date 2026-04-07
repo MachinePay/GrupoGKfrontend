@@ -44,7 +44,7 @@ export default function PerformanceTable({ data, isLoading }) {
                 Conta
               </th>
               <th className="px-4 py-3 text-right text-slate-300 font-semibold">
-                Saldo Inicial
+                Saldo Inicial (Período)
               </th>
               <th className="px-4 py-3 text-right text-slate-300 font-semibold">
                 Entradas
@@ -53,7 +53,7 @@ export default function PerformanceTable({ data, isLoading }) {
                 Saídas
               </th>
               <th className="px-4 py-3 text-right text-slate-300 font-semibold">
-                Saldo Final
+                Saldo Final (Período)
               </th>
               <th className="px-4 py-3 text-right text-slate-300 font-semibold">
                 % do Grupo
@@ -100,6 +100,13 @@ export default function PerformanceTable({ data, isLoading }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="px-4 py-3 border-t border-slate-700 bg-slate-800/70">
+        <p className="text-xs text-slate-400">
+          Os saldos apresentados representam o resultado dentro do período
+          filtrado.
+        </p>
       </div>
     </div>
   );
