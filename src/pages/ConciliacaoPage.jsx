@@ -229,6 +229,15 @@ export default function ConciliacaoPage() {
     [pendenciasFiltradas],
   );
 
+  const syncResultado = syncMutation.data?.data;
+  const syncDetalhes = Array.isArray(syncResultado?.detalhes)
+    ? syncResultado.detalhes
+    : [];
+  const syncAvisos = syncDetalhes.filter((item) => item?.status === "aviso");
+  const syncSincronizados = Number(syncResultado?.sincronizados || 0);
+  const syncTemSomenteAviso =
+    syncMutation.isSuccess && syncSincronizados === 0 && syncAvisos.length > 0;
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -316,10 +325,33 @@ export default function ConciliacaoPage() {
           </p>
         )}
 
-        {syncMutation.isSuccess && (
+        {syncMutation.isSuccess && !syncTemSomenteAviso && (
           <p className="text-sm text-green-400 bg-green-500/10 rounded-lg px-4 py-2">
-            Sincronização concluída
+            Sincronização concluída ({syncSincronizados} item(ns) novo(s))
           </p>
+        )}
+
+        {syncTemSomenteAviso && (
+          <p className="text-sm text-amber-300 bg-amber-500/10 rounded-lg px-4 py-2">
+            Nenhum item novo foi sincronizado. Verifique os avisos de fechamento
+            mensal abaixo.
+          </p>
+        )}
+
+        {syncMutation.isSuccess && syncAvisos.length > 0 && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 space-y-1">
+            <p className="text-sm font-medium text-amber-200">
+              Avisos da integração
+            </p>
+            {syncAvisos.map((aviso, index) => (
+              <p
+                key={`${aviso.lojaId || aviso.lojaNome || "aviso"}-${index}`}
+                className="text-xs text-amber-100"
+              >
+                - {aviso.mensagem}
+              </p>
+            ))}
+          </div>
         )}
       </div>
 
