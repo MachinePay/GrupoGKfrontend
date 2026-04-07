@@ -30,6 +30,20 @@ const FILTROS_SENTIDO = [
   { value: "ENTRADAS", label: "Entradas (Positivo)" },
 ];
 
+function getValorAssinado(item) {
+  const valor = parseFloat(item?.valor || 0);
+
+  if (item?.tipo === "PAGAR") {
+    return -Math.abs(valor);
+  }
+
+  if (item?.tipo === "RECEBER") {
+    return Math.abs(valor);
+  }
+
+  return valor;
+}
+
 function getSentidoItem(item) {
   if (item?.tipo === "PAGAR") return "GASTOS";
   if (item?.tipo === "RECEBER") return "ENTRADAS";
@@ -224,8 +238,7 @@ export default function ConciliacaoPage() {
   }
 
   const valorTotalPendente = useMemo(
-    () =>
-      pendenciasFiltradas.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0),
+    () => pendenciasFiltradas.reduce((sum, p) => sum + getValorAssinado(p), 0),
     [pendenciasFiltradas],
   );
 
@@ -368,7 +381,15 @@ export default function ConciliacaoPage() {
 
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Valor Total</p>
-            <p className="text-2xl font-bold text-white mt-1">
+            <p
+              className={`text-2xl font-bold mt-1 ${
+                valorTotalPendente > 0
+                  ? "text-emerald-300"
+                  : valorTotalPendente < 0
+                    ? "text-red-300"
+                    : "text-white"
+              }`}
+            >
               {formatCurrency(valorTotalPendente)}
             </p>
           </div>
