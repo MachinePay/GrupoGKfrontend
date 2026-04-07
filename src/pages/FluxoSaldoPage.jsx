@@ -182,6 +182,8 @@ export default function FluxoSaldoPage() {
         .listar({
           dataInicio,
           dataFim,
+          status: "REALIZADO",
+          somenteAprovadosConciliacao: true,
           ...(empresaFiltro && { empresaId: empresaFiltro }),
           limit: 500,
         })
