@@ -1,8 +1,26 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
-const LOGISTICS_BASE_URL =
-  import.meta.env.VITE_MAISQUIOSQUE_API_URL || BASE_URL;
+function ensureApiBaseUrl(value, fallback) {
+  const rawUrl = String(value || fallback || "").trim();
+  const normalizedUrl = rawUrl.replace(/\/+$/, "");
+
+  if (!normalizedUrl) {
+    return fallback;
+  }
+
+  return normalizedUrl.endsWith("/api")
+    ? normalizedUrl
+    : `${normalizedUrl}/api`;
+}
+
+const BASE_URL = ensureApiBaseUrl(
+  import.meta.env.VITE_API_URL,
+  "http://localhost:3001/api",
+);
+const LOGISTICS_BASE_URL = ensureApiBaseUrl(
+  import.meta.env.VITE_MAISQUIOSQUE_API_URL,
+  BASE_URL,
+);
 
 const api = axios.create({
   baseURL: BASE_URL,
