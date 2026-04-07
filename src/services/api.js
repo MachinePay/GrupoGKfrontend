@@ -17,18 +17,8 @@ const BASE_URL = ensureApiBaseUrl(
   import.meta.env.VITE_API_URL,
   "http://localhost:3001/api",
 );
-const LOGISTICS_BASE_URL = ensureApiBaseUrl(
-  import.meta.env.VITE_MAISQUIOSQUE_API_URL,
-  BASE_URL,
-);
-
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
-
-const logisticsHttp = axios.create({
-  baseURL: LOGISTICS_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -55,7 +45,6 @@ function applyAuthInterceptors(client) {
 }
 
 applyAuthInterceptors(api);
-applyAuthInterceptors(logisticsHttp);
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 export const authApi = {
@@ -159,9 +148,9 @@ export const integracaoApi = {
 // ─── Logistica MaisQuiosque ─────────────────────────────────────────────────
 export const logisticsApi = {
   listarFechamentos: (params) =>
-    logisticsHttp.get("/logistics/fechamentos", { params }),
+    api.get("/integracao/maisquiosque/fechamentos", { params }),
   salvarFechamento: (payload) =>
-    logisticsHttp.post("/logistics/fechamentos", payload),
+    api.post("/integracao/maisquiosque/fechamentos", payload),
 };
 
 export default api;
