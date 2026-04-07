@@ -50,6 +50,10 @@ function getSentidoItem(item) {
   return "TODOS";
 }
 
+function isItemFechamentoMensal(item) {
+  return String(item?.referenciaExternaId || "").startsWith("fechamento:");
+}
+
 function extrairLojaItem(item) {
   const descricao = String(item?.descricao || "");
   const matchLojaDescricao = descricao.match(/(?:^|\|)\s*Loja:\s*([^|]+)/i);
@@ -125,7 +129,7 @@ export default function ConciliacaoPage() {
   );
 
   const pendencias = useMemo(
-    () => pendenciasData?.dados ?? [],
+    () => (pendenciasData?.dados ?? []).filter(isItemFechamentoMensal),
     [pendenciasData],
   );
 
