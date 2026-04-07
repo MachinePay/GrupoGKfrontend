@@ -1,4 +1,4 @@
-import { Download, FileText, Sheet3 } from "lucide-react";
+import { FileSpreadsheet, FileText } from "lucide-react";
 
 export default function ExportButtons({
   onExportPDF,
@@ -20,7 +20,7 @@ export default function ExportButtons({
         disabled={isLoading}
         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 text-white text-sm rounded font-medium transition-colors"
       >
-        <Sheet3 size={16} />
+        <FileSpreadsheet size={16} />
         Excel
       </button>
     </div>

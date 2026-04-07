@@ -1,4 +1,4 @@
-import { useEmpresas, useContas } from "../../hooks/useFinanceiro.js";
+import { useEmpresas, useContas } from "../../../hooks/useFinanceiro.js";
 import { Calendar } from "lucide-react";
 
 export default function FilterBar({
