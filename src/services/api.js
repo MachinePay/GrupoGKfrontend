@@ -1,31 +1,43 @@
 import axios from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const LOGISTICS_BASE_URL =
+  import.meta.env.VITE_MAISQUIOSQUE_API_URL || BASE_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
-// Injeta token JWT em todas as requisições autenticadas
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("gk_token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
+const logisticsHttp = axios.create({
+  baseURL: LOGISTICS_BASE_URL,
+  headers: { "Content-Type": "application/json" },
 });
 
-// Redireciona para login em caso de 401
-api.interceptors.response.use(
-  (res) => res,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("gk_token");
-      localStorage.removeItem("gk_user");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  },
-);
+function applyAuthInterceptors(client) {
+  // Injeta token JWT em todas as requisições autenticadas
+  client.interceptors.request.use((config) => {
+    const token = localStorage.getItem("gk_token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  });
+
+  // Redireciona para login em caso de 401
+  client.interceptors.response.use(
+    (res) => res,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("gk_token");
+        localStorage.removeItem("gk_user");
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
+    },
+  );
+}
+
+applyAuthInterceptors(api);
+applyAuthInterceptors(logisticsHttp);
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 export const authApi = {
@@ -118,6 +130,14 @@ export const integracaoApi = {
   // Obtém estatísticas de pendências
   obterEstatisticas: (params) =>
     api.get("/integracao/estatisticas", { params }),
+};
+
+// ─── Logistica MaisQuiosque ─────────────────────────────────────────────────
+export const logisticsApi = {
+  listarFechamentos: (params) =>
+    logisticsHttp.get("/logistics/fechamentos", { params }),
+  salvarFechamento: (payload) =>
+    logisticsHttp.post("/logistics/fechamentos", payload),
 };
 
 export default api;

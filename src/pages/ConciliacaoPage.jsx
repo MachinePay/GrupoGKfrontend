@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useEmpresasIntegradas,
   usePendenciasIntegracao,
 } from "../hooks/useIntegracao.js";
 import { useContas } from "../hooks/useFinanceiro.js";
-import { integracaoApi } from "../services/api.js";
+import { integracaoApi, logisticsApi } from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
 import { Input, Select } from "../components/ui/FormField.jsx";
 import Badge from "../components/ui/Badge.jsx";
@@ -79,6 +79,18 @@ function buildFormState(item) {
   };
 }
 
+function getCurrentReferenceMonth() {
+  const currentDate = new Date();
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 export default function ConciliacaoPage() {
   const qc = useQueryClient();
   const [selectedEmpresaId, setSelectedEmpresaId] = useState("");
@@ -89,6 +101,16 @@ export default function ConciliacaoPage() {
   });
   const [filtroSentido, setFiltroSentido] = useState("TODOS");
   const [filtroLoja, setFiltroLoja] = useState("TODAS");
+  const [referenceMonth, setReferenceMonth] = useState(
+    getCurrentReferenceMonth,
+  );
+  const [fechamentoForm, setFechamentoForm] = useState({
+    custoGeralAtivo: "0",
+    receitaVinculada: "0",
+    lucroLiquido: "0",
+    lucroBruto: "0",
+    custosAplicadosPreAprovados: "0",
+  });
   const [form, setForm] = useState(() => buildFormState(null));
 
   const { data: empresasIntegradasData = {} } = useEmpresasIntegradas();
@@ -118,6 +140,9 @@ export default function ConciliacaoPage() {
     [empresasIntegradas, selectedEmpresaIdResolved],
   );
 
+  const isMaisQuiosqueSelecionada =
+    empresaSelecionada?.nome?.toLowerCase() === "maisquiosque";
+
   const origemSelecionadaLabel =
     empresaSelecionada?.integracaoLabel || "Integração";
 
@@ -132,6 +157,33 @@ export default function ConciliacaoPage() {
     () => (pendenciasData?.dados ?? []).filter(isItemFechamentoMensal),
     [pendenciasData],
   );
+
+  const { data: fechamentosData = [], isLoading: fechamentosLoading } =
+    useQuery({
+      queryKey: ["logistics", "fechamentos", referenceMonth],
+      queryFn: () =>
+        logisticsApi
+          .listarFechamentos(referenceMonth ? { referenceMonth } : undefined)
+          .then((response) => response.data?.data ?? []),
+      enabled: isMaisQuiosqueSelecionada && !!referenceMonth,
+    });
+
+  const fechamentoMutation = useMutation({
+    mutationFn: (payload) => logisticsApi.salvarFechamento(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["logistics", "fechamentos"] });
+    },
+  });
+
+  const fechamentoSelecionado = useMemo(() => {
+    if (!Array.isArray(fechamentosData)) return null;
+
+    const sorted = [...fechamentosData].sort((a, b) =>
+      String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")),
+    );
+
+    return sorted[0] || null;
+  }, [fechamentosData]);
 
   const opcoesLoja = useMemo(() => {
     const lojas = Array.from(
@@ -239,6 +291,24 @@ export default function ConciliacaoPage() {
     if (motivo) {
       rejectMutation.mutate({ agendaId, motivo });
     }
+  }
+
+  function handleSalvarFechamento() {
+    if (!referenceMonth) {
+      alert("Selecione o mês de referência (YYYY-MM).");
+      return;
+    }
+
+    fechamentoMutation.mutate({
+      referenceMonth,
+      custoGeralAtivo: toNumber(fechamentoForm.custoGeralAtivo),
+      receitaVinculada: toNumber(fechamentoForm.receitaVinculada),
+      lucroLiquido: toNumber(fechamentoForm.lucroLiquido),
+      lucroBruto: toNumber(fechamentoForm.lucroBruto),
+      custosAplicadosPreAprovados: toNumber(
+        fechamentoForm.custosAplicadosPreAprovados,
+      ),
+    });
   }
 
   const valorTotalPendente = useMemo(
@@ -403,6 +473,177 @@ export default function ConciliacaoPage() {
             <p className="text-2xl font-bold text-blue-400 mt-1">
               {origemSelecionadaLabel}
             </p>
+          </div>
+        </div>
+      )}
+
+      {isMaisQuiosqueSelecionada && (
+        <div className="glass card-shadow rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-white">
+              Fechamento Mensal - MaisQuiosque
+            </h2>
+            {fechamentoSelecionado && (
+              <p className="text-xs text-slate-400">
+                Atualizado em {formatDate(fechamentoSelecionado.updatedAt)}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Input
+              label="Mês de Referência"
+              type="month"
+              value={referenceMonth}
+              onChange={(e) => setReferenceMonth(e.target.value)}
+            />
+          </div>
+
+          {fechamentosLoading && (
+            <p className="text-sm text-slate-400">Carregando fechamento...</p>
+          )}
+
+          {!fechamentosLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <Input
+                label="Custo Geral Ativo"
+                type="number"
+                step="0.01"
+                min="0"
+                value={fechamentoForm.custoGeralAtivo}
+                onChange={(e) =>
+                  setFechamentoForm((prev) => ({
+                    ...prev,
+                    custoGeralAtivo: e.target.value,
+                  }))
+                }
+              />
+              <Input
+                label="Receita Vinculada"
+                type="number"
+                step="0.01"
+                min="0"
+                value={fechamentoForm.receitaVinculada}
+                onChange={(e) =>
+                  setFechamentoForm((prev) => ({
+                    ...prev,
+                    receitaVinculada: e.target.value,
+                  }))
+                }
+              />
+              <Input
+                label="Lucro Líquido"
+                type="number"
+                step="0.01"
+                value={fechamentoForm.lucroLiquido}
+                onChange={(e) =>
+                  setFechamentoForm((prev) => ({
+                    ...prev,
+                    lucroLiquido: e.target.value,
+                  }))
+                }
+              />
+              <Input
+                label="Lucro Bruto"
+                type="number"
+                step="0.01"
+                value={fechamentoForm.lucroBruto}
+                onChange={(e) =>
+                  setFechamentoForm((prev) => ({
+                    ...prev,
+                    lucroBruto: e.target.value,
+                  }))
+                }
+              />
+              <Input
+                label="Custos Aplicados Pré-Aprovados"
+                type="number"
+                step="0.01"
+                min="0"
+                value={fechamentoForm.custosAplicadosPreAprovados}
+                onChange={(e) =>
+                  setFechamentoForm((prev) => ({
+                    ...prev,
+                    custosAplicadosPreAprovados: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSalvarFechamento}
+              disabled={fechamentoMutation.isPending || !referenceMonth}
+              className="btn-primary"
+            >
+              {fechamentoMutation.isPending
+                ? "Salvando..."
+                : "Salvar fechamento"}
+            </button>
+            <p className="text-xs text-slate-400">
+              A rota utiliza upsert (cria/atualiza) para o mês informado.
+            </p>
+          </div>
+
+          {fechamentoMutation.isError && (
+            <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-4 py-2">
+              Erro ao salvar fechamento:{" "}
+              {fechamentoMutation.error?.response?.data?.message ||
+                "falha ao salvar"}
+            </p>
+          )}
+
+          {fechamentoMutation.isSuccess && (
+            <p className="text-sm text-green-400 bg-green-500/10 rounded-lg px-4 py-2">
+              Fechamento salvo com sucesso.
+            </p>
+          )}
+
+          <div className="rounded-lg border border-white/10 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-white/5 text-slate-300">
+                <tr>
+                  <th className="px-3 py-2 text-left">Mês</th>
+                  <th className="px-3 py-2 text-right">Custo Geral</th>
+                  <th className="px-3 py-2 text-right">Receita</th>
+                  <th className="px-3 py-2 text-right">Lucro Líquido</th>
+                  <th className="px-3 py-2 text-right">Lucro Bruto</th>
+                  <th className="px-3 py-2 text-right">Custos Pré-Aprov.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {(fechamentosData || []).length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-400" colSpan={6}>
+                      Nenhum fechamento encontrado para o mês selecionado.
+                    </td>
+                  </tr>
+                ) : (
+                  (fechamentosData || []).map((fechamento) => (
+                    <tr key={fechamento.id} className="text-slate-200">
+                      <td className="px-3 py-2">{fechamento.referenceMonth}</td>
+                      <td className="px-3 py-2 text-right">
+                        {formatCurrency(fechamento.custoGeralAtivo)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatCurrency(fechamento.receitaVinculada)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatCurrency(fechamento.lucroLiquido)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatCurrency(fechamento.lucroBruto)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatCurrency(fechamento.custosAplicadosPreAprovados)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
