@@ -105,6 +105,12 @@ export const integracaoApi = {
       });
     }
 
+    if (integracao === "maisquiosque") {
+      return api.get("/integracao/maisquiosque/sync", {
+        params: typeof params === "object" ? params : { empresaId: params },
+      });
+    }
+
     return Promise.reject(
       new Error(`Integração ${integracao} ainda não possui sincronização.`),
     );
