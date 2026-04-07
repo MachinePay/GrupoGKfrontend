@@ -10,10 +10,10 @@ function MetricCard({
   title,
   value,
   subtext,
-  icon: Icon,
+  icon,
   color = "blue",
   loading = false,
-}) {
+})
   const colorClasses = {
     blue: "from-blue-900/30 to-blue-800/20 border-blue-700",
     green: "from-green-900/30 to-green-800/20 border-green-700",
@@ -32,7 +32,7 @@ function MetricCard({
 
   return (
     <div
-      className={`bg-gradient-to-br ${colorClasses[color]} backdrop-blur border rounded-lg p-4`}
+      className={`bg-linear-to-br ${colorClasses[color]} backdrop-blur border rounded-lg p-4`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -46,8 +46,8 @@ function MetricCard({
           )}
           {subtext && <p className="mt-1 text-xs text-slate-400">{subtext}</p>}
         </div>
-        <Icon
-          className={`${iconColorClasses[color]} flex-shrink-0`}
+        <icon
+          className={`${iconColorClasses[color]} shrink-0`}
           size={24}
         />
       </div>
@@ -105,10 +105,10 @@ export default function MetricsCards({ metricas, isLoading }) {
 
       {/* Card de Ponto de Atenção */}
       {pontoAtencao && pontoAtencao.categoria !== "N/A" && (
-        <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700 rounded-lg p-4">
+          <div className="bg-linear-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle
-              className="text-yellow-400 flex-shrink-0 mt-1"
+                className="text-yellow-400 shrink-0 mt-1"
               size={20}
             />
             <div className="flex-1">

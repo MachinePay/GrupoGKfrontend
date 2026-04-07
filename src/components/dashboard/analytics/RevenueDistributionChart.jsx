@@ -49,7 +49,7 @@ export default function RevenueDistributionChart({ data, isLoading }) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value, name, props) => {
+            formatter={(value, name) => {
               if (name === "percentual") {
                 return [`${value}%`, "Percentual"];
               }

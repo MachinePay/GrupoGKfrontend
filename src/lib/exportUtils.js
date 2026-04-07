@@ -146,7 +146,7 @@ export function exportToPDF(dados, filtros) {
 /**
  * Exporta dados de analytics para Excel
  */
-export function exportToExcel(dados, filtros) {
+export function exportToExcel(dados) {
   const workbook = XLSX.utils.book_new();
 
   // Sheet 1: Métricas

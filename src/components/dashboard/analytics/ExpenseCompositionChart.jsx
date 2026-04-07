@@ -60,7 +60,7 @@ export default function ExpenseCompositionChart({ data, isLoading }) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value, name, props) => {
+            formatter={(value, name) => {
               if (name === "percentual") {
                 return [`${value}%`, "Percentual"];
               }

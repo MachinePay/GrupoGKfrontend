@@ -108,17 +108,17 @@ export default function AnalyticsPage() {
         <ul className="space-y-2 text-sm text-slate-400">
           <li>
             🎯 <strong>Gráfico de Pareto (20/80):</strong> Identifique os 20% de
-            custos que representam 80% dos gastos - geralmente aqui está a "gordura"
-            a cortar.
+            custos que representam 80% dos gastos - geralmente aqui está a
+            "gordura" a cortar.
           </li>
           <li>
-            💰 <strong>Saldos por Banco:</strong> Verifique se não há dinheiro parado
-            em contas que não rendem (como Caixa) enquanto outras pagam juros (como
-            cheque especial no Santander).
+            💰 <strong>Saldos por Banco:</strong> Verifique se não há dinheiro
+            parado em contas que não rendem (como Caixa) enquanto outras pagam
+            juros (como cheque especial no Santander).
           </li>
           <li>
-            📊 <strong>Burn Rate:</strong> Controle a velocidade de consumo de caixa.
-            Se > receitas, revise despesas variáveis urgentemente.
+            📊 <strong>Burn Rate:</strong> Controle a velocidade de consumo de
+            caixa. Se {">"} receitas, revise despesas variáveis urgentemente.
           </li>
           <li>
             🎪 <strong>Por Projeto (MaisQuiosque):</strong> Compare margens para
