@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Landmark,
   TrendingUp,
@@ -11,10 +11,13 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  X,
 } from "lucide-react";
-import { useContasSaldo } from "../hooks/useFinanceiro.js";
+import { useContasSaldo, useEmpresas } from "../hooks/useFinanceiro.js";
 import { movimentacoesApi } from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
+import { Input, Select } from "../components/ui/FormField.jsx";
 
 const TIPO_COLOR = {
   ENTRADA: "text-emerald-400",
@@ -65,6 +68,18 @@ export default function BancosPage() {
 
   const contaId = contaIdParam;
 
+  // Estado para formulário rápido de lançamento
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    data: today(),
+    tipo: "ENTRADA",
+    valor: "",
+    referencia: "",
+  });
+
+  const qc = useQueryClient();
+  const { data: empresas = [] } = useEmpresas();
+
   const {
     data: contas = [],
     isLoading: loadContas,
@@ -96,6 +111,23 @@ export default function BancosPage() {
     keepPreviousData: true,
   });
 
+  // Mutação para criar lançamento rápido
+  const createMutation = useMutation({
+    mutationFn: (payload) => movimentacoesApi.criar(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({
+        queryKey: ["movimentacoes", "bancos-extrato"],
+      });
+      setFormData({
+        data: today(),
+        tipo: "ENTRADA",
+        valor: "",
+        referencia: "",
+      });
+      setShowForm(false);
+    },
+  });
+
   const items = useMemo(() => movsData?.items ?? [], [movsData]);
   const pagination = movsData?.pagination ?? {};
 
@@ -119,6 +151,23 @@ export default function BancosPage() {
 
   function clearConta() {
     setSearchParams({});
+  }
+
+  function handleSaveLancamento() {
+    if (!formData.valor || !selectedConta) return;
+
+    const payload = {
+      data: formData.data,
+      tipo: formData.tipo,
+      valor: Number(formData.valor),
+      referencia: formData.referencia || null,
+      empresaId: empresas.length > 0 ? empresas[0].id : null,
+      status: "REALIZADO",
+      contaOrigemId: formData.tipo === "SAIDA" ? Number(contaId) : undefined,
+      contaDestinoId: formData.tipo === "ENTRADA" ? Number(contaId) : undefined,
+    };
+
+    createMutation.mutate(payload);
   }
 
   return (
@@ -354,6 +403,98 @@ export default function BancosPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Formulário rápido de lançamento */}
+          <div className="glass card-shadow rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+                Novo Lançamento
+              </h3>
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className={`btn-ghost p-1.5 rounded-lg transition-all ${
+                  showForm ? "bg-red-500/10 text-red-400" : "text-blue-400"
+                }`}
+              >
+                {showForm ? <X size={16} /> : <Plus size={16} />}
+              </button>
+            </div>
+
+            {showForm && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <Input
+                    label="Data"
+                    type="date"
+                    value={formData.data}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, data: e.target.value }))
+                    }
+                  />
+                  <Select
+                    label="Tipo"
+                    value={formData.tipo}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, tipo: e.target.value }))
+                    }
+                    options={[
+                      { value: "ENTRADA", label: "Entrada (Crédito)" },
+                      { value: "SAIDA", label: "Saída (Débito)" },
+                    ]}
+                  />
+                  <Input
+                    label="Valor (R$)"
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={formData.valor}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        valor: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Referência"
+                    placeholder="Cheque, boleto, etc..."
+                    value={formData.referencia}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        referencia: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={handleSaveLancamento}
+                    disabled={createMutation.isPending || !formData.valor}
+                    className="btn-primary flex-1"
+                  >
+                    {createMutation.isPending
+                      ? "Salvando..."
+                      : "Confirmar Lançamento"}
+                  </button>
+                  <button
+                    onClick={() => setShowForm(false)}
+                    className="btn-ghost flex-1"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+
+                {createMutation.isError && (
+                  <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">
+                    {createMutation.error?.response?.data?.message ??
+                      "Erro ao salvar lançamento"}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tabela de lançamentos */}
