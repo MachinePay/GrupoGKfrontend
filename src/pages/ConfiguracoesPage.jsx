@@ -16,8 +16,9 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
+  Store,
 } from "lucide-react";
-import { cadastrosApi, authApi } from "../services/api.js";
+import { cadastrosApi, authApi, fornecedoresApi } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas } from "../hooks/useFinanceiro.js";
@@ -690,6 +691,256 @@ function UsuariosTab() {
   );
 }
 
+/* ─────────────── Fornecedores ─────────────── */
+function FornecedoresTab() {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ nome: "", descricao: "" });
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editingForm, setEditingForm] = useState({ nome: "", descricao: "" });
+
+  const { data: fornecedores = [], isLoading } = useQuery({
+    queryKey: ["fornecedores-config"],
+    queryFn: () => fornecedoresApi.listar().then((r) => r.data),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => fornecedoresApi.criar(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fornecedores-config"] });
+      qc.invalidateQueries({ queryKey: ["fornecedores"] });
+      setForm({ nome: "", descricao: "" });
+      setShowForm(false);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) => fornecedoresApi.atualizar(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fornecedores-config"] });
+      qc.invalidateQueries({ queryKey: ["fornecedores"] });
+      setEditingId(null);
+      setEditingForm({ nome: "", descricao: "" });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (id) => fornecedoresApi.toggle(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fornecedores-config"] });
+      qc.invalidateQueries({ queryKey: ["fornecedores"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => fornecedoresApi.remover(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fornecedores-config"] });
+      qc.invalidateQueries({ queryKey: ["fornecedores"] });
+    },
+  });
+
+  function startEdit(fornecedor) {
+    setEditingId(fornecedor.id);
+    setEditingForm({ nome: fornecedor.nome, descricao: fornecedor.descricao });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingForm({ nome: "", descricao: "" });
+  }
+
+  function saveEdit() {
+    if (!editingId || !editingForm.nome.trim()) return;
+    updateMutation.mutate({
+      id: editingId,
+      payload: editingForm,
+    });
+  }
+
+  function removeFornecedor(fornecedor) {
+    const ok = window.confirm(
+      `Deseja excluir o fornecedor "${fornecedor.nome}"? Esta ação não pode ser desfeita.`,
+    );
+
+    if (!ok) return;
+    deleteMutation.mutate(fornecedor.id);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-slate-400">
+          {fornecedores.length} fornecedor(es) cadastrado(s)
+        </p>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="btn-primary flex items-center gap-1.5 text-sm px-3 py-2"
+        >
+          {showForm ? <X size={14} /> : <Plus size={14} />}
+          {showForm ? "Cancelar" : "Novo Fornecedor"}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="glass rounded-xl p-4 space-y-3">
+          <Input
+            label="Nome do Fornecedor"
+            value={form.nome}
+            onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+          />
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              Descrição
+            </label>
+            <textarea
+              value={form.descricao}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, descricao: e.target.value }))
+              }
+              rows={3}
+              className="input-base resize-none"
+              placeholder="Informações adicionais sobre o fornecedor"
+            />
+          </div>
+          <button
+            onClick={() => createMutation.mutate(form)}
+            className="btn-primary w-full"
+            disabled={createMutation.isPending || !form.nome.trim()}
+          >
+            {createMutation.isPending ? "Salvando…" : "Salvar Fornecedor"}
+          </button>
+          {createMutation.isError && (
+            <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+              {createMutation.error?.response?.data?.message ??
+                "Erro ao criar fornecedor."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {updateMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {updateMutation.error?.response?.data?.message ??
+            "Erro ao atualizar fornecedor."}
+        </p>
+      )}
+
+      {deleteMutation.isError && (
+        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+          {deleteMutation.error?.response?.data?.message ??
+            "Erro ao excluir fornecedor."}
+        </p>
+      )}
+
+      <div className="glass rounded-xl overflow-hidden">
+        {isLoading && (
+          <div className="p-6 text-center text-slate-500 text-sm">
+            Carregando…
+          </div>
+        )}
+        {fornecedores.length === 0 && !isLoading && (
+          <div className="p-6 text-center text-slate-500 text-sm">
+            Nenhum fornecedor cadastrado
+          </div>
+        )}
+        {fornecedores.map((f) => (
+          <div
+            key={f.id}
+            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+          >
+            {editingId === f.id ? (
+              <div className="w-full space-y-3">
+                <Input
+                  label="Nome"
+                  value={editingForm.nome}
+                  onChange={(e) =>
+                    setEditingForm((prev) => ({
+                      ...prev,
+                      nome: e.target.value,
+                    }))
+                  }
+                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    Descrição
+                  </label>
+                  <textarea
+                    value={editingForm.descricao}
+                    onChange={(e) =>
+                      setEditingForm((prev) => ({
+                        ...prev,
+                        descricao: e.target.value,
+                      }))
+                    }
+                    rows={2}
+                    className="input-base resize-none"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="btn-primary px-3 py-1.5 text-xs flex-1"
+                    onClick={saveEdit}
+                    disabled={
+                      updateMutation.isPending || !editingForm.nome.trim()
+                    }
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    className="btn-ghost px-3 py-1.5 text-xs flex-1"
+                    onClick={cancelEdit}
+                    disabled={updateMutation.isPending}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-sm text-white font-medium">{f.nome}</p>
+                  {f.descricao && (
+                    <p className="text-xs text-slate-500 truncate">
+                      {f.descricao}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleMutation.mutate(f.id)}
+                    className="text-slate-400 hover:text-white transition-colors"
+                    disabled={toggleMutation.isPending}
+                  >
+                    {f.ativo ? (
+                      <ToggleRight size={22} className="text-emerald-400" />
+                    ) : (
+                      <ToggleLeft size={22} />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => startEdit(f)}
+                    className="btn-ghost px-2 py-1 text-xs flex items-center gap-1"
+                  >
+                    <Pencil size={12} /> Editar
+                  </button>
+                  <button
+                    onClick={() => removeFornecedor(f)}
+                    className="btn-ghost px-2 py-1 text-xs text-red-300 hover:text-red-200 flex items-center gap-1"
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 size={12} /> Excluir
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Tema ─────────────── */
 function TemaTab() {
   const { theme, toggleTheme } = useTheme();
@@ -820,6 +1071,12 @@ const TABS = [
     component: ProjetosTab,
   },
   {
+    key: "fornecedores",
+    label: "Fornecedores",
+    icon: Store,
+    component: FornecedoresTab,
+  },
+  {
     key: "tema",
     label: "Tema",
     icon: Palette,
@@ -845,6 +1102,8 @@ export default function ConfiguracoesPage() {
         return <ContasTab />;
       case "projetos":
         return <ProjetosTab />;
+      case "fornecedores":
+        return <FornecedoresTab />;
       case "usuarios":
         return isAdmin ? <UsuariosTab /> : null;
       case "tema":

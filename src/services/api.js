@@ -84,6 +84,15 @@ export const agendaApi = {
   baixar: (id, payload) => api.post(`/agenda/${id}/baixar`, payload),
 };
 
+// ─── Fornecedores ────────────────────────────────────────────────────────────
+export const fornecedoresApi = {
+  listar: (params) => api.get("/fornecedores", { params }),
+  criar: (payload) => api.post("/fornecedores", payload),
+  atualizar: (id, payload) => api.put(`/fornecedores/${id}`, payload),
+  toggle: (id) => api.patch(`/fornecedores/${id}/toggle`),
+  remover: (id) => api.delete(`/fornecedores/${id}`),
+};
+
 // ─── Cadastros ───────────────────────────────────────────────────────────────
 export const cadastrosApi = {
   listarEmpresas: () => api.get("/cadastros/empresas"),
