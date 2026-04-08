@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   TrendingUp,
   TrendingDown,
@@ -19,6 +19,7 @@ const EmpresaChartSection = lazy(
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const {
     data: consolidado,
     isLoading: loadConsolidado,
@@ -58,6 +59,13 @@ export default function DashboardPage() {
     return { entradas, saidas, saldoHoje };
   }, [movsHoje]);
 
+  function handleRefresh() {
+    // Invalidar todas as queries do dashboard
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    // Também tentar refazer as queries específicas
+    refetch?.();
+  }
+
   return (
     <div className="space-y-6">
       {/* Título */}
@@ -71,7 +79,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <button
-          onClick={() => refetch()}
+          onClick={handleRefresh}
           className="btn-ghost flex items-center gap-1.5 text-xs"
         >
           <RefreshCw size={13} /> Atualizar

@@ -155,6 +155,21 @@ export default function BancosPage() {
     setSearchParams({});
   }
 
+  function handleRefresh() {
+    if (contaId) {
+      // Invalidar queries de movimentações para forçar refetch
+      qc.invalidateQueries({
+        queryKey: ["movimentacoes", "bancos-extrato"],
+      });
+      // Também refazer a query atualmente ativa
+      refetchMovs();
+    } else {
+      // Invalidar queries de contas
+      qc.invalidateQueries({ queryKey: ["dashboard", "contas"] });
+      refetchContas();
+    }
+  }
+
   function handleSaveLancamento() {
     if (!formData.valor || !selectedConta || !formData.empresaId) return;
 
@@ -200,7 +215,7 @@ export default function BancosPage() {
           </div>
         </div>
         <button
-          onClick={() => (contaId ? refetchMovs() : refetchContas())}
+          onClick={handleRefresh}
           className="btn-ghost flex items-center gap-1.5 text-xs"
         >
           <RefreshCw size={13} /> Atualizar
