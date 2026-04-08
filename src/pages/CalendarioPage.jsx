@@ -90,25 +90,62 @@ const TIPO_OPTIONS = [
   { value: "RECEBER", label: "Receber" },
 ];
 
+const TIPO_PAGAMENTO_OPTIONS = [
+  { value: "PIX", label: "Pix" },
+  { value: "TRANSFERENCIA", label: "Transferência" },
+  { value: "CHEQUE", label: "Cheque" },
+  { value: "BOLETO", label: "Boleto" },
+];
+
+const ORIGEM_TIPO_OPTIONS = [
+  { value: "DOACAO", label: "Doação" },
+  { value: "FORNECEDOR", label: "Fornecedor" },
+  { value: "CF", label: "CF" },
+  { value: "CV", label: "CV" },
+  { value: "DIVERSOS", label: "Diversos" },
+  { value: "FP", label: "FP" },
+];
+
 const INITIAL_FORM = {
   titulo: "",
   descricao: "",
   origem: "",
+  origemTipo: "",
+  tipoPagamento: "",
+  fornecedorId: "",
   empresaId: "",
   data: "",
   valor: "",
   prioridade: "MEDIA",
   status: "PREVISTO",
   tipo: "PAGAR",
+  recurrenteAte: "",
 };
 
 function AgendaForm({ item, onCancel, onSuccess }) {
   const qc = useQueryClient();
   const { data: empresas = [] } = useEmpresas();
+  const { data: fornecedores = [] } = useQuery({
+    queryKey: ["fornecedores"],
+    queryFn: () =>
+      fetch("/api/fornecedores", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+        .then((r) => r.json())
+        .catch(() => []),
+  });
+
   const [form, setForm] = useState(() => ({
     titulo: item?.titulo ?? INITIAL_FORM.titulo,
     descricao: item?.descricao ?? INITIAL_FORM.descricao,
     origem: item?.origem ?? INITIAL_FORM.origem,
+    origemTipo: item?.origemTipo ?? INITIAL_FORM.origemTipo,
+    tipoPagamento: item?.tipoPagamento ?? INITIAL_FORM.tipoPagamento,
+    fornecedorId: item?.fornecedorId
+      ? String(item.fornecedorId)
+      : INITIAL_FORM.fornecedorId,
     empresaId: item?.empresaId
       ? String(item.empresaId)
       : INITIAL_FORM.empresaId,
@@ -119,6 +156,14 @@ function AgendaForm({ item, onCancel, onSuccess }) {
     prioridade: item?.prioridade ?? INITIAL_FORM.prioridade,
     status: item?.status ?? INITIAL_FORM.status,
     tipo: item?.tipo ?? INITIAL_FORM.tipo,
+    tipoPagamento: item?.tipoPagamento ?? INITIAL_FORM.tipoPagamento,
+    origemTipo: item?.origemTipo ?? INITIAL_FORM.origemTipo,
+    fornecedorId: item?.fornecedorId
+      ? String(item.fornecedorId)
+      : INITIAL_FORM.fornecedorId,
+    recurrenteAte: item?.recurrenteAte
+      ? new Date(item.recurrenteAte).toISOString().slice(0, 10)
+      : INITIAL_FORM.recurrenteAte,
   }));
   const [errors, setErrors] = useState({});
 
@@ -161,6 +206,10 @@ function AgendaForm({ item, onCancel, onSuccess }) {
       valor: Number(form.valor),
       descricao: form.descricao || undefined,
       origem: form.origem || undefined,
+      origemTipo: form.origemTipo || undefined,
+      tipoPagamento: form.tipoPagamento || undefined,
+      fornecedorId: form.fornecedorId ? Number(form.fornecedorId) : undefined,
+      recurrenteAte: form.recurrenteAte || undefined,
     });
   }
 
@@ -251,13 +300,43 @@ function AgendaForm({ item, onCancel, onSuccess }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Origem"
-          value={form.origem}
-          onChange={set("origem")}
-          placeholder="Ex: Cliente João, Loja Interlagos, Parceiro X"
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Select
+          label="Tipo de Pagamento"
+          value={form.tipoPagamento}
+          onChange={set("tipoPagamento")}
+          options={TIPO_PAGAMENTO_OPTIONS}
+          placeholder="Selecione…"
         />
+        <Select
+          label="Origem"
+          value={form.origemTipo}
+          onChange={set("origemTipo")}
+          options={ORIGEM_TIPO_OPTIONS}
+          placeholder="Selecione…"
+        />
+        {form.origemTipo === "FORNECEDOR" && (
+          <Select
+            label="Fornecedor"
+            value={form.fornecedorId}
+            onChange={set("fornecedorId")}
+            options={fornecedores.map((f) => ({
+              value: f.id,
+              label: f.nome,
+            }))}
+            placeholder="Selecione…"
+          />
+        )}
+        <Input
+          label="Recorrente até"
+          type="date"
+          value={form.recurrenteAte}
+          onChange={set("recurrenteAte")}
+          placeholder="Deixe em branco se não for recorrente"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
             Descrição
@@ -1025,11 +1104,10 @@ export default function CalendarioPage() {
                       {item.descricao}
                     </div>
                   )}
-                  {item.origem && (
-                    <div className="text-xs text-slate-400 truncate mt-0.5">
-                      Origem: {item.origem}
-                    </div>
-                  )}
+                  <div className="text-xs text-slate-400 truncate mt-0.5 space-x-2">
+                    {item.tipoPagamento && <span>💳 {item.tipoPagamento}</span>}
+                    {item.fornecedor && <span>🤝 {item.fornecedor.nome}</span>}
+                  </div>
                 </div>
                 <div className="col-span-2 text-xs text-slate-400 truncate">
                   {item.empresa?.nome}
