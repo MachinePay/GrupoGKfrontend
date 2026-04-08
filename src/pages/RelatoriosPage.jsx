@@ -87,29 +87,6 @@ function EmpresaCard({ empresa }) {
             </p>
           </div>
 
-          {data?.contas?.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-slate-500 uppercase tracking-wider">
-                Contas Bancárias
-              </p>
-              {data.contas.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-slate-400 truncate">
-                    {c.banco} – {c.nome}
-                  </span>
-                  <span
-                    className={`font-medium tabular-nums ${c.saldoAtual >= 0 ? "text-emerald-400" : "text-red-400"}`}
-                  >
-                    {formatCurrency(c.saldoAtual)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
           {data?.projetos?.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-xs text-slate-500 uppercase tracking-wider">
