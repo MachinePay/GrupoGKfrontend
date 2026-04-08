@@ -116,8 +116,13 @@ export default function BancosPage() {
   const createMutation = useMutation({
     mutationFn: (payload) => movimentacoesApi.criar(payload),
     onSuccess: () => {
+      // Invalidar todas as queries de movimentacoes (bancos, fluxo, dashboard, etc)
       qc.invalidateQueries({
-        queryKey: ["movimentacoes", "bancos-extrato"],
+        queryKey: ["movimentacoes"],
+      });
+      // Também invalidar queries de dashboard para atualizar lançamentos de hoje
+      qc.invalidateQueries({
+        queryKey: ["dashboard"],
       });
       setFormData({
         data: today(),
