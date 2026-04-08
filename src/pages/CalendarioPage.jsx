@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { agendaApi } from "../services/api.js";
+import { agendaApi, fornecedoresApi } from "../services/api.js";
 import { useContas, useEmpresas, useProjetos } from "../hooks/useFinanceiro.js";
 import { Badge } from "../components/ui/Badge.jsx";
 import { Input, Select } from "../components/ui/FormField.jsx";
@@ -128,12 +128,9 @@ function AgendaForm({ item, onCancel, onSuccess }) {
   const { data: fornecedores = [] } = useQuery({
     queryKey: ["fornecedores"],
     queryFn: () =>
-      fetch("/api/fornecedores", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
-        .then((r) => r.json())
+      fornecedoresApi
+        .listar({ ativo: true })
+        .then((r) => r.data)
         .catch(() => []),
   });
 
