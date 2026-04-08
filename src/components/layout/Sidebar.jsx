@@ -10,6 +10,7 @@ import {
   LogOut,
   ClipboardCheck,
   BarChart3,
+  Landmark,
 } from "lucide-react";
 import logoGrupoGk from "../../assets/Logo Grupo Gk .png";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -21,6 +22,7 @@ const NAV = [
   { to: "/calendario", label: "Calendário", Icon: CalendarCheck },
   { to: "/conciliacao", label: "Conciliação", Icon: ClipboardCheck },
   { to: "/contas-pagar", label: "Contas a Pagar", Icon: Wallet },
+  { to: "/bancos", label: "Bancos", Icon: Landmark },
   { to: "/fluxo-saldo", label: "Fluxo de Saldo", Icon: TrendingUp },
   { to: "/relatorios", label: "Relatórios", Icon: PieChart },
   { to: "/analytics", label: "Analytics", Icon: BarChart3 },

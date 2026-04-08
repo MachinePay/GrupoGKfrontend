@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TrendingUp,
   TrendingDown,
@@ -15,12 +16,15 @@ const EmpresaChartSection = lazy(
 );
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const {
     data: consolidado,
     isLoading: loadConsolidado,
     refetch,
   } = useConsolidado();
   const { data: contas = [], isLoading: loadContas } = useContasSaldo();
+
+  const saldoGeral = contas.reduce((sum, c) => sum + (c.saldoAtual || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -59,11 +63,11 @@ export default function DashboardPage() {
           loading={loadConsolidado}
         />
         <SaldoCard
-          title="Saldo Líquido"
-          value={formatCurrency(consolidado?.saldoLiquido)}
+          title="Saldo Geral"
+          value={formatCurrency(saldoGeral)}
           icon={Wallet}
-          color={consolidado?.saldoLiquido >= 0 ? "blue" : "red"}
-          loading={loadConsolidado}
+          color={saldoGeral >= 0 ? "blue" : "red"}
+          loading={loadContas}
         />
         <SaldoCard
           title="Contas Ativas"
@@ -91,11 +95,18 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {contas.map((conta) => (
-              <MiniCard
+              <button
                 key={conta.id}
-                label={`${conta.banco} – ${conta.nome}`}
-                value={formatCurrency(conta.saldoAtual)}
-              />
+                onClick={() => navigate(`/bancos?contaId=${conta.id}`)}
+                className="glass rounded-xl p-4 text-left hover:bg-white/5 transition-all duration-150 hover:border-blue-500/30 border border-transparent"
+              >
+                <p className="text-xs text-slate-400 mb-1 truncate">
+                  {conta.banco} – {conta.nome}
+                </p>
+                <p className="text-base font-semibold text-white tabular-nums truncate">
+                  {formatCurrency(conta.saldoAtual)}
+                </p>
+              </button>
             ))}
             {contas.length === 0 && (
               <p className="text-slate-500 text-sm col-span-full">

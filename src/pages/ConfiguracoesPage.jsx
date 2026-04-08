@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   Moon,
   Pencil,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { cadastrosApi, authApi } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -215,6 +217,7 @@ function EmpresasTab() {
 /* ─────────────── Contas Bancárias ─────────────── */
 function ContasTab() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     nome: "",
     banco: "",
@@ -431,6 +434,13 @@ function ContasTab() {
                       currency: "BRL",
                     }).format(c.saldoAtual)}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/bancos?contaId=${c.id}`)}
+                    className="btn-ghost px-2 py-1 text-xs flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                  >
+                    <ExternalLink size={12} /> Extrato
+                  </button>
                   <button
                     type="button"
                     onClick={() => startEdit(c)}
