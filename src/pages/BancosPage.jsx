@@ -37,16 +37,6 @@ const TIPO_SIGNAL = {
   TRANSFERENCIA: "↔",
 };
 
-const STATUS_LABEL = {
-  REALIZADO: "Realizado",
-  PREVISTO: "Previsto",
-};
-
-const STATUS_COLOR = {
-  REALIZADO: "bg-emerald-500/15 text-emerald-400",
-  PREVISTO: "bg-amber-500/15 text-amber-400",
-};
-
 const PAGE_SIZE = 30;
 
 function today() {
@@ -576,9 +566,6 @@ export default function BancosPage() {
                       </th>
                       <th className="text-left px-5 py-3 font-medium">Conta</th>
                       <th className="text-left px-5 py-3 font-medium">Tipo</th>
-                      <th className="text-left px-5 py-3 font-medium">
-                        Status
-                      </th>
                       <th className="text-right px-5 py-3 font-medium">
                         Valor
                       </th>
@@ -624,13 +611,6 @@ export default function BancosPage() {
                             >
                               {TIPO_SIGNAL[item.tipo]}{" "}
                               {TIPO_LABEL[item.tipo] ?? item.tipo}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 whitespace-nowrap">
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[item.status] ?? "bg-white/10 text-slate-400"}`}
-                            >
-                              {STATUS_LABEL[item.status] ?? item.status}
                             </span>
                           </td>
                           <td

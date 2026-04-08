@@ -222,6 +222,7 @@ function ContasTab() {
   const [form, setForm] = useState({
     nome: "",
     banco: "",
+    observacoes: "",
     saldoInicial: "",
   });
   const [showForm, setShowForm] = useState(false);
@@ -229,6 +230,7 @@ function ContasTab() {
   const [editingForm, setEditingForm] = useState({
     nome: "",
     banco: "",
+    observacoes: "",
   });
 
   const { data: contas = [], isLoading } = useQuery({
@@ -241,7 +243,7 @@ function ContasTab() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contas-config"] });
       setShowForm(false);
-      setForm({ nome: "", banco: "", saldoInicial: "" });
+      setForm({ nome: "", banco: "", observacoes: "", saldoInicial: "" });
     },
   });
 
@@ -251,7 +253,7 @@ function ContasTab() {
       qc.invalidateQueries({ queryKey: ["contas-config"] });
       qc.invalidateQueries({ queryKey: ["dashboard", "contas"] });
       setEditingId(null);
-      setEditingForm({ nome: "", banco: "" });
+      setEditingForm({ nome: "", banco: "", observacoes: "" });
     },
   });
 
@@ -268,12 +270,13 @@ function ContasTab() {
     setEditingForm({
       nome: conta.nome,
       banco: conta.banco,
+      observacoes: conta.observacoes ?? "",
     });
   }
 
   function cancelEdit() {
     setEditingId(null);
-    setEditingForm({ nome: "", banco: "" });
+    setEditingForm({ nome: "", banco: "", observacoes: "" });
   }
 
   function saveEdit() {
@@ -284,6 +287,7 @@ function ContasTab() {
       payload: {
         nome: editingForm.nome,
         banco: editingForm.banco,
+        observacoes: editingForm.observacoes,
       },
     });
   }
@@ -335,6 +339,20 @@ function ContasTab() {
                 setForm((f) => ({ ...f, saldoInicial: e.target.value }))
               }
             />
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Observações
+              </label>
+              <textarea
+                value={form.observacoes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, observacoes: e.target.value }))
+                }
+                rows={2}
+                className="input-base resize-none"
+                placeholder="Dados complementares da conta"
+              />
+            </div>
           </div>
           <button
             onClick={() =>
@@ -377,7 +395,7 @@ function ContasTab() {
             className="flex items-center justify-between px-4 py-3 border-b border-white/5"
           >
             {editingId === c.id ? (
-              <div className="w-full grid grid-cols-1 md:grid-cols-[1fr_1fr_220px_auto] gap-2 items-center">
+              <div className="w-full grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-2 items-center">
                 <Input
                   value={editingForm.banco}
                   onChange={(e) =>
@@ -396,6 +414,22 @@ function ContasTab() {
                     }))
                   }
                 />
+                <div className="md:col-span-2 flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    Observações
+                  </label>
+                  <textarea
+                    value={editingForm.observacoes}
+                    onChange={(e) =>
+                      setEditingForm((prev) => ({
+                        ...prev,
+                        observacoes: e.target.value,
+                      }))
+                    }
+                    rows={2}
+                    className="input-base resize-none"
+                  />
+                </div>
                 <div className="flex items-center gap-2 justify-end">
                   <button
                     type="button"
@@ -425,6 +459,11 @@ function ContasTab() {
                   <p className="text-sm text-white font-medium">
                     {c.banco} – {c.nome}
                   </p>
+                  {c.observacoes && (
+                    <p className="text-xs text-slate-500 truncate">
+                      {c.observacoes}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <span
