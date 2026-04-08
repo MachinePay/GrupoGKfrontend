@@ -75,6 +75,7 @@ export default function BancosPage() {
     tipo: "ENTRADA",
     valor: "",
     referencia: "",
+    empresaId: "",
   });
 
   const qc = useQueryClient();
@@ -123,6 +124,7 @@ export default function BancosPage() {
         tipo: "ENTRADA",
         valor: "",
         referencia: "",
+        empresaId: "",
       });
       setShowForm(false);
     },
@@ -154,14 +156,14 @@ export default function BancosPage() {
   }
 
   function handleSaveLancamento() {
-    if (!formData.valor || !selectedConta) return;
+    if (!formData.valor || !selectedConta || !formData.empresaId) return;
 
     const payload = {
       data: formData.data,
       tipo: formData.tipo,
       valor: Number(formData.valor),
       referencia: formData.referencia || null,
-      empresaId: empresas.length > 0 ? empresas[0].id : null,
+      empresaId: Number(formData.empresaId),
       status: "REALIZADO",
       contaOrigemId: formData.tipo === "SAIDA" ? Number(contaId) : undefined,
       contaDestinoId: formData.tipo === "ENTRADA" ? Number(contaId) : undefined,
@@ -467,12 +469,31 @@ export default function BancosPage() {
                       }))
                     }
                   />
+                  <Select
+                    label="Empresa"
+                    value={formData.empresaId}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        empresaId: e.target.value,
+                      }))
+                    }
+                    options={empresas.map((emp) => ({
+                      value: emp.id,
+                      label: emp.nome,
+                    }))}
+                    placeholder="Selecione a empresa"
+                  />
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">
                   <button
                     onClick={handleSaveLancamento}
-                    disabled={createMutation.isPending || !formData.valor}
+                    disabled={
+                      createMutation.isPending ||
+                      !formData.valor ||
+                      !formData.empresaId
+                    }
                     className="btn-primary flex-1"
                   >
                     {createMutation.isPending
