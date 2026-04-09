@@ -1,11 +1,22 @@
-import { useState } from "react";
 import { Bell, ChevronDown } from "lucide-react";
-import { useConsolidado, useEmpresas } from "../../hooks/useFinanceiro.js";
+import { useConsolidado, useContasSaldo } from "../../hooks/useFinanceiro.js";
 import { formatCurrency } from "../../lib/utils.js";
 
-export default function Header({ onFilterChange, empresaFiltro }) {
+export default function Header({ onContaFilterChange, contaFiltro }) {
   const { data: consolidado, isLoading } = useConsolidado();
-  const { data: empresas = [] } = useEmpresas();
+  const { data: contas = [] } = useContasSaldo();
+
+  const contaSelecionada = contaFiltro
+    ? contas.find((conta) => String(conta.id) === String(contaFiltro))
+    : null;
+
+  const saldoConsolidadoExibido = contaSelecionada
+    ? Number(contaSelecionada.saldoAtual || 0)
+    : Number(consolidado?.saldoLiquido || 0);
+
+  const saldoLabel = contaSelecionada
+    ? `Saldo ${contaSelecionada.banco}`
+    : "Saldo Consolidado";
 
   return (
     <header
@@ -15,31 +26,31 @@ export default function Header({ onFilterChange, empresaFiltro }) {
       {/* Saldo consolidado destaque */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-600 dark:text-slate-500 hidden sm:inline">
-          Saldo Consolidado
+          {saldoLabel}
         </span>
         {isLoading ? (
           <div className="h-5 w-32 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
         ) : (
           <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
-            {formatCurrency(consolidado?.saldoLiquido)}
+            {formatCurrency(saldoConsolidadoExibido)}
           </span>
         )}
       </div>
 
       <div className="flex-1" />
 
-      {/* Filtro por empresa */}
+      {/* Filtro por conta bancaria */}
       <div className="relative">
         <select
-          value={empresaFiltro}
-          onChange={(e) => onFilterChange(e.target.value)}
+          value={contaFiltro}
+          onChange={(e) => onContaFilterChange(e.target.value)}
           className="appearance-none input-base pr-8 py-1.5 text-sm"
-          style={{ width: 180 }}
+          style={{ width: 220 }}
         >
-          <option value="">Todas as Empresas</option>
-          {empresas.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nome}
+          <option value="">Todos os Bancos</option>
+          {contas.map((conta) => (
+            <option key={conta.id} value={conta.id}>
+              {`${conta.banco} - ${conta.nome}`}
             </option>
           ))}
         </select>

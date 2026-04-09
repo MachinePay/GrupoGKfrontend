@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar.jsx";
 import Header from "./Header.jsx";
 
 export default function AppShell() {
-  const [empresaFiltro, setEmpresaFiltro] = useState("");
+  const [contaFiltro, setContaFiltro] = useState("");
 
   return (
     <div
@@ -17,14 +17,14 @@ export default function AppShell() {
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
         <Header
-          empresaFiltro={empresaFiltro}
-          onFilterChange={setEmpresaFiltro}
+          contaFiltro={contaFiltro}
+          onContaFilterChange={setContaFiltro}
         />
         <main
           className="flex-1 p-6 overflow-y-auto"
           style={{ backgroundColor: "var(--bg-primary)" }}
         >
-          <Outlet context={{ empresaFiltro }} />
+          <Outlet context={{ contaFiltro }} />
         </main>
       </div>
     </div>
