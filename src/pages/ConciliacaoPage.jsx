@@ -75,12 +75,48 @@ function extrairLojaItem(item) {
 }
 
 function buildFormState(item) {
+  const dataItem = item ? new Date(item.data) : null;
+  const dataAjustada = dataItem
+    ? `${dataItem.getFullYear()}-${String(dataItem.getMonth() + 1).padStart(2, "0")}-${String(dataItem.getDate()).padStart(2, "0")}`
+    : "";
+
   return {
     contaId: "",
+    dataAjustada,
     valorAjustado: item ? String(item.valor ?? "") : "",
     categoriaAjustada: "CUSTO_FIXO",
     tipoDespesaAjustada: "CUSTOS_OPERACIONAIS",
   };
+}
+
+function isItemSaida(item) {
+  return item?.tipo === "PAGAR";
+}
+
+function getConfirmarLabel(item) {
+  if (!item?.permiteAprovacaoFinanceira) {
+    return "Marcar Conferido";
+  }
+
+  return isItemSaida(item)
+    ? "Confirmar Lançamento de Gasto"
+    : "Confirmar Lançamento de Entrada";
+}
+
+function getTituloModal(item, mode) {
+  if (!item?.permiteAprovacaoFinanceira) {
+    return "Marcar relatório como conferido";
+  }
+
+  if (mode === "ajustar") {
+    return isItemSaida(item)
+      ? "Ajustar lançamento de gasto"
+      : "Ajustar lançamento de entrada";
+  }
+
+  return isItemSaida(item)
+    ? "Confirmar lançamento de gasto"
+    : "Confirmar lançamento de entrada";
 }
 
 function getCurrentReferenceMonth() {
@@ -243,6 +279,7 @@ export default function ConciliacaoPage() {
       agendaId: modalState.item.id,
       payload: {
         contaId: form.contaId ? Number(form.contaId) : undefined,
+        dataAjustada: form.dataAjustada || undefined,
         valorAjustado:
           modalState.mode === "ajustar" && form.valorAjustado
             ? Number(form.valorAjustado)
@@ -576,7 +613,7 @@ export default function ConciliacaoPage() {
                             disabled={approveMutation.isPending}
                             className="btn-primary"
                           >
-                            Confirmar Gasto
+                            {getConfirmarLabel(item)}
                           </button>
                           <button
                             type="button"
@@ -626,11 +663,7 @@ export default function ConciliacaoPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold text-white">
-                  {modalState.mode === "ajustar"
-                    ? "Ajustar pendência"
-                    : modalState.item.permiteAprovacaoFinanceira
-                      ? "Confirmar gasto"
-                      : "Marcar relatório como conferido"}
+                  {getTituloModal(modalState.item, modalState.mode)}
                 </h3>
                 <p className="text-sm text-slate-400 mt-1">
                   {modalState.item.titulo}
@@ -644,8 +677,11 @@ export default function ConciliacaoPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input
                 label="Data"
-                value={formatDate(modalState.item.data)}
-                readOnly
+                type="date"
+                value={form.dataAjustada}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, dataAjustada: e.target.value }))
+                }
               />
               <Input
                 label="Valor original"
@@ -682,28 +718,32 @@ export default function ConciliacaoPage() {
                         }))
                       }
                     />
-                    <Select
-                      label="Categoria"
-                      value={form.categoriaAjustada}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          categoriaAjustada: e.target.value,
-                        }))
-                      }
-                      options={CATEGORIAS_AJUSTE}
-                    />
-                    <Select
-                      label="Tipo de despesa"
-                      value={form.tipoDespesaAjustada}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          tipoDespesaAjustada: e.target.value,
-                        }))
-                      }
-                      options={TIPOS_DESPESA_AJUSTE}
-                    />
+                    {isItemSaida(modalState.item) && (
+                      <>
+                        <Select
+                          label="Categoria"
+                          value={form.categoriaAjustada}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              categoriaAjustada: e.target.value,
+                            }))
+                          }
+                          options={CATEGORIAS_AJUSTE}
+                        />
+                        <Select
+                          label="Tipo de despesa"
+                          value={form.tipoDespesaAjustada}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              tipoDespesaAjustada: e.target.value,
+                            }))
+                          }
+                          options={TIPOS_DESPESA_AJUSTE}
+                        />
+                      </>
+                    )}
                   </>
                 )}
             </div>
@@ -726,9 +766,7 @@ export default function ConciliacaoPage() {
               >
                 {approveMutation.isPending
                   ? "Salvando..."
-                  : modalState.item.permiteAprovacaoFinanceira
-                    ? "Confirmar"
-                    : "Marcar conferido"}
+                  : getConfirmarLabel(modalState.item)}
               </button>
             </div>
           </div>
