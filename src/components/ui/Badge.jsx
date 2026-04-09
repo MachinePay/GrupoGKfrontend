@@ -25,6 +25,7 @@ export function Badge({ status, label, variant }) {
   const variantMap = {
     agarramais: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
     relatorio: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30",
+    entrada: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
     default: "bg-slate-500/20 text-slate-300 border border-slate-500/30",
   };
 

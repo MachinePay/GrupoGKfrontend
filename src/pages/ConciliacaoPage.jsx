@@ -119,6 +119,31 @@ function getTituloModal(item, mode) {
     : "Confirmar lançamento de entrada";
 }
 
+function getClassificacaoBadgeLabel(item) {
+  if (item.classificacaoExterna === "RELATORIO") return "RELATORIO";
+  if (item.classificacaoExterna === "ENTRADA_BRUTA") return "ENTRADA BRUTA";
+  if (item.classificacaoExterna === "CUSTO_DASHBOARD") return "CUSTO DASHBOARD";
+  if (item.classificacaoExterna === "RECEITA") return "RECEITA";
+  if (item.classificacaoExterna === "GASTO_FIXO") return "GASTO FIXO";
+
+  return item.tipo === "RECEBER" ? "RECEITA" : "GASTO FIXO";
+}
+
+function getClassificacaoTipoLabel(item) {
+  if (item.classificacaoExterna === "RECEITA") return "RECEITA";
+  if (item.classificacaoExterna === "GASTO_FIXO") return "GASTO FIXO";
+
+  return item.classificacaoExterna;
+}
+
+function getClassificacaoVariant(item) {
+  if (item.classificacaoExterna === "RELATORIO") return "relatorio";
+  if (item.classificacaoExterna === "ENTRADA_BRUTA") return "agarramais";
+  if (item.classificacaoExterna === "RECEITA") return "entrada";
+
+  return "default";
+}
+
 function getCurrentReferenceMonth() {
   const currentDate = new Date();
   const year = currentDate.getFullYear();
@@ -524,24 +549,8 @@ export default function ConciliacaoPage() {
                       variant="agarramais"
                     />
                     <Badge
-                      label={
-                        item.classificacaoExterna === "RELATORIO"
-                          ? "RELATORIO"
-                          : item.classificacaoExterna === "ENTRADA_BRUTA"
-                            ? "ENTRADA BRUTA"
-                            : item.classificacaoExterna === "CUSTO_DASHBOARD"
-                              ? "CUSTO DASHBOARD"
-                              : "GASTO FIXO"
-                      }
-                      variant={
-                        item.classificacaoExterna === "RELATORIO"
-                          ? "relatorio"
-                          : item.classificacaoExterna === "ENTRADA_BRUTA"
-                            ? "agarramais"
-                            : item.classificacaoExterna === "CUSTO_DASHBOARD"
-                              ? "default"
-                              : "default"
-                      }
+                      label={getClassificacaoBadgeLabel(item)}
+                      variant={getClassificacaoVariant(item)}
                     />
                     <button
                       type="button"
@@ -566,7 +575,7 @@ export default function ConciliacaoPage() {
                   <div>
                     <p className="text-slate-500">Tipo</p>
                     <p className="font-medium text-white">
-                      {item.classificacaoExterna}
+                      {getClassificacaoTipoLabel(item)}
                     </p>
                   </div>
                   <div>
