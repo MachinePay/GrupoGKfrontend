@@ -16,6 +16,8 @@ const queryClient = new QueryClient({
   },
 });
 
+// upando deploy
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
