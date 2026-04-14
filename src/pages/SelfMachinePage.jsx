@@ -92,7 +92,7 @@ function getStatusVisual(contrato) {
 
   if (
     contrato.statusMensalidade === "AGUARDANDO_PAGAMENTO" &&
-    contrato.ultimoPedidoPagamentoAt
+    contrato.temPedidoLancado
   ) {
     return "EM_DIA";
   }
