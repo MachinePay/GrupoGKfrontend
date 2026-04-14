@@ -22,6 +22,7 @@ const STATUS_STYLE = {
   PAUSADO: "bg-orange-500/20 text-orange-300 border-orange-400/30",
   ATRASADO: "bg-rose-500/20 text-rose-300 border-rose-400/30",
   NAO_PAGO: "bg-[#1b1b1b] text-[#c4c4c4] border-[#3e3e3e]",
+  SISTEMA_PAGO: "bg-sky-500/20 text-sky-300 border-sky-400/30",
   EM_DIA: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
 };
 
@@ -29,6 +30,7 @@ const STATUS_LABEL = {
   PAUSADO: "PAUSADO",
   ATRASADO: "MENSALIDADE ATRASADA",
   NAO_PAGO: "NAO PAGO",
+  SISTEMA_PAGO: "SISTEMA PAGO / MENSALIDADE PENDENTE",
   EM_DIA: "EM DIA",
 };
 
@@ -88,6 +90,13 @@ function getStatusVisual(contrato) {
 
   if (contrato.statusMensalidade === "PAGO") {
     return "EM_DIA";
+  }
+
+  if (
+    contrato.statusMensalidade === "AGUARDANDO_PAGAMENTO" &&
+    contrato.temPagamentoLancado
+  ) {
+    return "SISTEMA_PAGO";
   }
 
   if (
