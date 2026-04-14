@@ -46,6 +46,7 @@ const BASE_FORM = {
   dataInicioMensalidade: "",
   condicoesPagamento: "Avista Integral Pos entrega",
   meioPagamento: "PIX",
+  chavePix: "",
   statusSistema: "ATIVO",
   statusMensalidade: "AGUARDANDO_PAGAMENTO",
   tipoPlano: "FULL",
@@ -251,6 +252,14 @@ function SelfMachineFormModal({
               value={form.meioPagamento}
               onChange={(e) => setField("meioPagamento", e.target.value)}
             />
+            {form.meioPagamento?.toUpperCase() === "PIX" && (
+              <Input
+                label="Chave PIX"
+                value={form.chavePix}
+                onChange={(e) => setField("chavePix", e.target.value)}
+                placeholder="Email, CPF/CNPJ, Telefone ou Chave Aleatoria"
+              />
+            )}
             <Select
               label="Status do Sistema"
               value={form.statusSistema}

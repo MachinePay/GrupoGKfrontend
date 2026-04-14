@@ -62,8 +62,9 @@ function drawHeader(doc, contrato, title) {
   const width = doc.internal.pageSize.getWidth();
 
   doc.setFillColor(...PRIMARY);
-  doc.rect(0, 0, width, 34, "F");
+  doc.rect(0, 0, width, 40, "F");
 
+  // SELFMACHINE logo/text on left
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -73,19 +74,26 @@ function drawHeader(doc, contrato, title) {
   doc.setFontSize(10);
   doc.text("Centro de Comando SaaS - Grupo GK", 12, 20);
 
+  // Title on right
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
   doc.text(title, width - 12, 14, { align: "right" });
+
+  // Client name on right
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(...LIGHT);
-  doc.text(contrato.nomeCliente || "Cliente", width - 12, 20, {
+  doc.setFontSize(9);
+  doc.text(contrato.nomeCliente || "Cliente", width - 12, 22, {
     align: "right",
   });
 
+  // Partner logo (larger, on right)
   if (contrato.logoParceiraUrl?.startsWith("data:image")) {
     try {
-      doc.addImage(contrato.logoParceiraUrl, "PNG", width - 34, 6, 18, 18);
+      doc.addImage(contrato.logoParceiraUrl, "PNG", width - 50, 4, 40, 32);
     } catch {
-      // Ignora erro de imagem invalida.
+      // Ignora erro de imagem invalida
     }
   }
 }
@@ -97,7 +105,7 @@ export function generatePedidoPagamentoPdf(contrato) {
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("Dados do Pedido", 12, 44);
+  doc.text("Dados do Pedido", 12, 50);
 
   const tableData = [
     ["Numero do PC", contrato.numeroPc || "-"],
@@ -115,13 +123,19 @@ export function generatePedidoPagamentoPdf(contrato) {
     ["Inicio da Mensalidade", formatDate(contrato.dataInicioMensalidade)],
     ["Condicoes de Pagamento", contrato.condicoesPagamento || "-"],
     ["Meio de Pagamento", contrato.meioPagamento || "-"],
-    [
-      "Status Atual",
-      `${contrato.statusSistema || "-"} / ${contrato.statusMensalidade || "-"}`,
-    ],
   ];
 
-  let y = drawSimpleTable(doc, 47, ["Campo", "Valor"], tableData, {
+  // Add PIX key if payment method is PIX
+  if (contrato.meioPagamento?.toUpperCase() === "PIX" && contrato.chavePix) {
+    tableData.push(["Chave PIX", contrato.chavePix]);
+  }
+
+  tableData.push([
+    "Status Atual",
+    `${contrato.statusSistema || "-"} / ${contrato.statusMensalidade || "-"}`,
+  ]);
+
+  let y = drawSimpleTable(doc, 53, ["Campo", "Valor"], tableData, {
     cellWidth: 60,
     headerBgColor: PRIMARY,
   });
