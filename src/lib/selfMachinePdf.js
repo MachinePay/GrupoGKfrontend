@@ -1,10 +1,62 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
 import { formatCurrency, formatDate } from "./utils.js";
 
 const PRIMARY = [18, 18, 18];
 const ACCENT = [224, 140, 29];
 const LIGHT = [245, 245, 245];
+
+// Helper para desenhar tabelas sem plugin
+function drawSimpleTable(doc, startY, headers, rows, options = {}) {
+  const {
+    cellWidth = 60,
+    headerBgColor = PRIMARY,
+    textColor = [0, 0, 0],
+  } = options;
+  const colWidths = options.colWidths || [cellWidth, 186 - cellWidth];
+  const lineHeight = 8;
+  const padding = 2;
+
+  let y = startY;
+
+  // Desenhar headers
+  doc.setFillColor(...headerBgColor);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+
+  let x = 12;
+  for (let i = 0; i < headers.length; i++) {
+    doc.rect(x, y, colWidths[i], lineHeight, "F");
+    doc.text(headers[i], x + padding, y + lineHeight - padding);
+    x += colWidths[i];
+  }
+
+  y += lineHeight;
+
+  // Desenhar linhas
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...textColor);
+  doc.setFontSize(9);
+
+  let alternateRow = false;
+  for (const row of rows) {
+    if (alternateRow) {
+      doc.setFillColor(250, 250, 250);
+      doc.rect(12, y, 186, lineHeight, "F");
+    }
+
+    x = 12;
+    for (let i = 0; i < row.length; i++) {
+      doc.text(String(row[i]), x + padding, y + lineHeight - padding);
+      x += colWidths[i];
+    }
+
+    y += lineHeight;
+    alternateRow = !alternateRow;
+  }
+
+  return y;
+}
 
 function drawHeader(doc, contrato, title) {
   const width = doc.internal.pageSize.getWidth();
@@ -47,47 +99,33 @@ export function generatePedidoPagamentoPdf(contrato) {
   doc.setFontSize(12);
   doc.text("Dados do Pedido", 12, 44);
 
-  doc.autoTable({
-    startY: 47,
-    head: [["Campo", "Valor"]],
-    body: [
-      ["Numero do PC", contrato.numeroPc || "-"],
-      ["Data de Emissao", formatDate(contrato.dataEmissao)],
-      ["Cliente", contrato.nomeCliente || "-"],
-      ["Sistema", contrato.nomeSistema || "-"],
-      ["Vendedor", contrato.vendedor || "-"],
-      ["Tipo de Remessa", contrato.tipoRemessa || "-"],
-      ["Plano", contrato.tipoPlano || "-"],
-      [
-        "Desenvolvimento (Setup)",
-        formatCurrency(contrato.valorDesenvolvimento || 0),
-      ],
-      ["Mensalidade", formatCurrency(contrato.valorMensalidade || 0)],
-      ["Inicio da Mensalidade", formatDate(contrato.dataInicioMensalidade)],
-      ["Condicoes de Pagamento", contrato.condicoesPagamento || "-"],
-      ["Meio de Pagamento", contrato.meioPagamento || "-"],
-      [
-        "Status Atual",
-        `${contrato.statusSistema || "-"} / ${contrato.statusMensalidade || "-"}`,
-      ],
+  const tableData = [
+    ["Numero do PC", contrato.numeroPc || "-"],
+    ["Data de Emissao", formatDate(contrato.dataEmissao)],
+    ["Cliente", contrato.nomeCliente || "-"],
+    ["Sistema", contrato.nomeSistema || "-"],
+    ["Vendedor", contrato.vendedor || "-"],
+    ["Tipo de Remessa", contrato.tipoRemessa || "-"],
+    ["Plano", contrato.tipoPlano || "-"],
+    [
+      "Desenvolvimento (Setup)",
+      formatCurrency(contrato.valorDesenvolvimento || 0),
     ],
-    headStyles: {
-      fillColor: PRIMARY,
-      textColor: [255, 255, 255],
-    },
-    alternateRowStyles: {
-      fillColor: [250, 250, 250],
-    },
-    styles: {
-      fontSize: 10,
-    },
-    columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold" },
-      1: { cellWidth: 120 },
-    },
-  });
+    ["Mensalidade", formatCurrency(contrato.valorMensalidade || 0)],
+    ["Inicio da Mensalidade", formatDate(contrato.dataInicioMensalidade)],
+    ["Condicoes de Pagamento", contrato.condicoesPagamento || "-"],
+    ["Meio de Pagamento", contrato.meioPagamento || "-"],
+    [
+      "Status Atual",
+      `${contrato.statusSistema || "-"} / ${contrato.statusMensalidade || "-"}`,
+    ],
+  ];
 
-  let y = doc.lastAutoTable.finalY + 8;
+  let y = drawSimpleTable(doc, 47, ["Campo", "Valor"], tableData, {
+    cellWidth: 60,
+    headerBgColor: PRIMARY,
+  });
+  y += 8;
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
@@ -142,46 +180,42 @@ export function generatePropostaSistemaPdf(contrato) {
     { maxWidth: 176 },
   );
 
-  doc.autoTable({
-    startY: 108,
-    head: [["Item", "Detalhe"]],
-    body: [
-      ["Tipo de Remessa", contrato.tipoRemessa || "-"],
-      [
-        "Data de Inicio da Mensalidade",
-        formatDate(contrato.dataInicioMensalidade),
-      ],
-      ["Condicoes de Pagamento", contrato.condicoesPagamento || "-"],
-      ["Meio de Pagamento", contrato.meioPagamento || "-"],
-      [
-        "Investimento de Setup",
-        formatCurrency(contrato.valorDesenvolvimento || 0),
-      ],
-      ["Mensalidade", formatCurrency(contrato.valorMensalidade || 0)],
+  const propostaTableData = [
+    ["Tipo de Remessa", contrato.tipoRemessa || "-"],
+    [
+      "Data de Inicio da Mensalidade",
+      formatDate(contrato.dataInicioMensalidade),
     ],
-    headStyles: {
-      fillColor: PRIMARY,
-      textColor: [255, 255, 255],
+    ["Condicoes de Pagamento", contrato.condicoesPagamento || "-"],
+    ["Meio de Pagamento", contrato.meioPagamento || "-"],
+    [
+      "Investimento de Setup",
+      formatCurrency(contrato.valorDesenvolvimento || 0),
+    ],
+    ["Mensalidade", formatCurrency(contrato.valorMensalidade || 0)],
+  ];
+
+  let tableY = drawSimpleTable(
+    doc,
+    108,
+    ["Item", "Detalhe"],
+    propostaTableData,
+    {
+      cellWidth: 62,
+      headerBgColor: PRIMARY,
     },
-    bodyStyles: {
-      textColor: [20, 20, 20],
-    },
-    columnStyles: {
-      0: { cellWidth: 62, fontStyle: "bold" },
-      1: { cellWidth: 118 },
-    },
-  });
+  );
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...ACCENT);
-  doc.text("Prazos", 12, doc.lastAutoTable.finalY + 12);
+  doc.text("Prazos", 12, tableY + 12);
 
   doc.setFont("helvetica", "normal");
   doc.setTextColor(40, 40, 40);
   doc.text(
     "Kickoff imediato apos aceite. Entrega inicial prevista em ate 30 dias, com evolucao continua sob contrato mensal.",
     12,
-    doc.lastAutoTable.finalY + 18,
+    tableY + 18,
     { maxWidth: 186 },
   );
 
