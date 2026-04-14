@@ -29,7 +29,7 @@ const STATUS_LABEL = {
   PAUSADO: "PAUSADO",
   ATRASADO: "MENSALIDADE ATRASADA",
   NAO_PAGO: "NAO PAGO",
-  EM_DIA: "PAGO EM DIA",
+  EM_DIA: "EM DIA",
 };
 
 const BASE_FORM = {
@@ -86,7 +86,10 @@ function getStatusVisual(contrato) {
     return "ATRASADO";
   }
 
-  if (contrato.statusMensalidade === "PAGO") {
+  if (
+    contrato.statusMensalidade === "PAGO" ||
+    contrato.statusMensalidade === "AGUARDANDO_PAGAMENTO"
+  ) {
     return "EM_DIA";
   }
 
