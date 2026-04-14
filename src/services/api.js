@@ -162,4 +162,14 @@ export const logisticsApi = {
     api.post("/integracao/maisquiosque/fechamentos", payload),
 };
 
+// ─── SelfMachine SaaS ───────────────────────────────────────────────────────
+export const selfMachineApi = {
+  listar: () => api.get("/selfmachine/saas"),
+  buscar: (id) => api.get(`/selfmachine/saas/${id}`),
+  criar: (payload) => api.post("/selfmachine/saas", payload),
+  atualizar: (id, payload) => api.put(`/selfmachine/saas/${id}`, payload),
+  remover: (id) => api.delete(`/selfmachine/saas/${id}`),
+  gerarPedido: (id) => api.post(`/selfmachine/saas/${id}/gerar-pedido`),
+};
+
 export default api;

@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, PlusCircle } from "lucide-react";
 import {
   useEmpresas,
   useContas,
   useProjetos,
 } from "../../hooks/useFinanceiro.js";
-import { movimentacoesApi } from "../../services/api.js";
+import { movimentacoesApi, selfMachineApi } from "../../services/api.js";
 import { Input, Select } from "../ui/FormField.jsx";
 
 const TIPOS = [
@@ -68,6 +68,11 @@ const STATUS_OPTS = [
   { value: "PREVISTO", label: "Previsto" },
 ];
 
+const TIPOS_SELFMACHINE = [
+  { value: "MENSALIDADE", label: "Mensalidade" },
+  { value: "PAGAMENTO", label: "Pagamento" },
+];
+
 const SUBCATEGORIAS_GIRAKIDS = [
   { value: "TAKE_PARCERIA", label: "TakeParceria" },
   { value: "PELUCIA_PARCERIA", label: "PelúciaParceria" },
@@ -89,6 +94,8 @@ const INITIAL = {
   status: "REALIZADO",
   projetoId: "",
   subcategoria: "",
+  saasClienteId: "",
+  saasLancamentoTipo: "",
 };
 
 export default function MovimentacaoForm({ onSuccess }) {
@@ -103,11 +110,20 @@ export default function MovimentacaoForm({ onSuccess }) {
   );
   const isMaisQuiosque = empresaSelecionada?.nome === "MaisQuiosque";
   const isGiraKids = empresaSelecionada?.nome === "GiraKids";
+  const isSelfMachine =
+    String(empresaSelecionada?.nome || "")
+      .trim()
+      .toLowerCase() === "selfmachine";
 
   const { data: contas = [] } = useContas(form.empresaId || undefined);
   const { data: projetos = [] } = useProjetos(
     isMaisQuiosque ? form.empresaId : undefined,
   );
+  const { data: contratosSaas = [] } = useQuery({
+    queryKey: ["selfmachine", "saas", "form"],
+    queryFn: () => selfMachineApi.listar().then((res) => res.data),
+    enabled: isSelfMachine,
+  });
   const categoriaOptions =
     form.tipo === "ENTRADA"
       ? CATEGORIAS_ENTRADA
@@ -135,11 +151,35 @@ export default function MovimentacaoForm({ onSuccess }) {
 
   function set(field) {
     return (e) => {
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      const nextValue = e.target.value;
+
+      if (field === "empresaId") {
+        const nextEmpresa = empresas.find(
+          (item) => String(item.id) === String(nextValue),
+        );
+        const nextIsSelfMachine =
+          String(nextEmpresa?.nome || "")
+            .trim()
+            .toLowerCase() === "selfmachine";
+
+        setForm((prev) => ({
+          ...prev,
+          empresaId: nextValue,
+          projetoId: "",
+          subcategoria: "",
+          saasClienteId: nextIsSelfMachine ? prev.saasClienteId : "",
+          saasLancamentoTipo: nextIsSelfMachine ? prev.saasLancamentoTipo : "",
+        }));
+
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+        return;
+      }
+
+      setForm((prev) => ({ ...prev, [field]: nextValue }));
       if (
         field === "categoria" &&
-        e.target.value !== "CUSTO_FIXO" &&
-        e.target.value !== "CUSTO_VARIAVEL"
+        nextValue !== "CUSTO_FIXO" &&
+        nextValue !== "CUSTO_VARIAVEL"
       ) {
         setForm((prev) => ({ ...prev, tipoDespesa: "" }));
       }
@@ -168,6 +208,12 @@ export default function MovimentacaoForm({ onSuccess }) {
       e.projetoId = "Obrigatório para MaisQuiosque";
     if (isGiraKids && !form.subcategoria)
       e.subcategoria = "Obrigatório para GiraKids";
+    if (isSelfMachine && !form.saasClienteId)
+      e.saasClienteId = "Obrigatório para SelfMachine";
+    if (isSelfMachine && !form.saasLancamentoTipo)
+      e.saasLancamentoTipo = "Obrigatório para SelfMachine";
+    if (isSelfMachine && form.tipo !== "ENTRADA")
+      e.tipo = "Para SelfMachine utilize ENTRADA";
     if (form.tipo === "ENTRADA" && !form.contaDestinoId)
       e.contaDestinoId = "Obrigatório para Entrada";
     if (form.tipo === "SAIDA" && !form.contaOrigemId)
@@ -204,6 +250,10 @@ export default function MovimentacaoForm({ onSuccess }) {
         : undefined,
       projetoId: form.projetoId ? Number(form.projetoId) : undefined,
       subcategoria: form.subcategoria || undefined,
+      saasClienteId: form.saasClienteId
+        ? Number(form.saasClienteId)
+        : undefined,
+      saasLancamentoTipo: form.saasLancamentoTipo || undefined,
     };
     mutation.mutate(payload);
   }
@@ -213,6 +263,10 @@ export default function MovimentacaoForm({ onSuccess }) {
     label: `${c.banco} – ${c.nome}`,
   }));
   const projetoOptions = projetos.map((p) => ({ value: p.id, label: p.nome }));
+  const contratosOptions = contratosSaas.map((item) => ({
+    value: item.id,
+    label: `${item.nomeCliente} - ${item.nomeSistema}`,
+  }));
 
   return (
     <form
@@ -347,6 +401,30 @@ export default function MovimentacaoForm({ onSuccess }) {
             options={SUBCATEGORIAS_GIRAKIDS}
             placeholder="Nenhuma…"
             error={errors.subcategoria}
+          />
+        </div>
+      )}
+
+      {isSelfMachine && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-amber-500/25 bg-amber-500/5">
+          <p className="col-span-full text-xs text-amber-300 font-medium">
+            SelfMachine - Vinculo de cliente e tipo de lancamento
+          </p>
+          <Select
+            label="Cliente SaaS"
+            value={form.saasClienteId}
+            onChange={set("saasClienteId")}
+            options={contratosOptions}
+            placeholder="Selecione cliente..."
+            error={errors.saasClienteId}
+          />
+          <Select
+            label="Tipo (SelfMachine)"
+            value={form.saasLancamentoTipo}
+            onChange={set("saasLancamentoTipo")}
+            options={TIPOS_SELFMACHINE}
+            placeholder="Selecione tipo..."
+            error={errors.saasLancamentoTipo}
           />
         </div>
       )}

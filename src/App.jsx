@@ -15,6 +15,7 @@ const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage.jsx"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage.jsx"));
 const ConfiguracoesPage = lazy(() => import("./pages/ConfiguracoesPage.jsx"));
 const BancosPage = lazy(() => import("./pages/BancosPage.jsx"));
+const SelfMachinePage = lazy(() => import("./pages/SelfMachinePage.jsx"));
 
 function RouteFallback() {
   return (
@@ -53,6 +54,7 @@ function AppRoutes() {
           <Route path="relatorios" element={<RelatoriosPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="bancos" element={<BancosPage />} />
+          <Route path="selfmachine" element={<SelfMachinePage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
         </Route>
 
