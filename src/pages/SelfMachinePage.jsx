@@ -86,9 +86,13 @@ function getStatusVisual(contrato) {
     return "ATRASADO";
   }
 
+  if (contrato.statusMensalidade === "PAGO") {
+    return "EM_DIA";
+  }
+
   if (
-    contrato.statusMensalidade === "PAGO" ||
-    contrato.statusMensalidade === "AGUARDANDO_PAGAMENTO"
+    contrato.statusMensalidade === "AGUARDANDO_PAGAMENTO" &&
+    contrato.ultimoPedidoPagamentoAt
   ) {
     return "EM_DIA";
   }
