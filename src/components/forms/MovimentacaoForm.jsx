@@ -17,6 +17,7 @@ const TIPOS = [
 
 const CATEGORIAS = [
   { value: "PEDIDO", label: "Pedido" },
+  { value: "SISTEMA", label: "Sistema" },
   { value: "COMISSAO", label: "Comissão" },
   { value: "RECOLHE_LOJAS", label: "Recolhe Lojas" },
   { value: "BOLETO", label: "Boleto" },
@@ -31,6 +32,7 @@ const CATEGORIAS = [
 
 const CATEGORIAS_ENTRADA = [
   { value: "PEDIDO", label: "Pedido" },
+  { value: "SISTEMA", label: "Sistema" },
   { value: "COMISSAO", label: "Comissão" },
   { value: "RECOLHE_LOJAS", label: "Recolhe Lojas" },
   { value: "BOLETO", label: "Boleto" },
@@ -39,6 +41,7 @@ const CATEGORIAS_ENTRADA = [
 ];
 
 const CATEGORIAS_SAIDA = [
+  { value: "SISTEMA", label: "Sistema" },
   { value: "FORNECEDOR", label: "Fornecedor" },
   { value: "CUSTO_FIXO", label: "Custo Fixo" },
   { value: "CUSTO_VARIAVEL", label: "Custo Variável" },
@@ -208,12 +211,10 @@ export default function MovimentacaoForm({ onSuccess }) {
       e.projetoId = "Obrigatório para MaisQuiosque";
     if (isGiraKids && !form.subcategoria)
       e.subcategoria = "Obrigatório para GiraKids";
-    if (isSelfMachine && !form.saasClienteId)
-      e.saasClienteId = "Obrigatório para SelfMachine";
-    if (isSelfMachine && !form.saasLancamentoTipo)
-      e.saasLancamentoTipo = "Obrigatório para SelfMachine";
-    if (isSelfMachine && form.tipo !== "ENTRADA")
-      e.tipo = "Para SelfMachine utilize ENTRADA";
+    if (isSelfMachine && form.saasClienteId && !form.saasLancamentoTipo)
+      e.saasLancamentoTipo = "Selecione o tipo quando informar cliente SaaS";
+    if (isSelfMachine && form.saasLancamentoTipo && !form.saasClienteId)
+      e.saasClienteId = "Selecione cliente SaaS quando informar tipo";
     if (form.tipo === "ENTRADA" && !form.contaDestinoId)
       e.contaDestinoId = "Obrigatório para Entrada";
     if (form.tipo === "SAIDA" && !form.contaOrigemId)
@@ -408,7 +409,7 @@ export default function MovimentacaoForm({ onSuccess }) {
       {isSelfMachine && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-amber-500/25 bg-amber-500/5">
           <p className="col-span-full text-xs text-amber-300 font-medium">
-            SelfMachine - Vinculo de cliente e tipo de lancamento
+            SelfMachine - Vinculo opcional de cliente e tipo de lancamento
           </p>
           <Select
             label="Cliente SaaS"
