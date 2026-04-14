@@ -51,6 +51,8 @@ const BASE_FORM = {
   statusMensalidade: "AGUARDANDO_PAGAMENTO",
   tipoPlano: "FULL",
   descricao: "Desenvolvimento sistema Web",
+  prazosDescricao:
+    "Kickoff imediato apos aceite. Entrega inicial prevista em ate 30 dias, com evolucao continua sob contrato mensal.",
 };
 
 function toInputDate(value) {
@@ -308,6 +310,18 @@ function SelfMachineFormModal({
               onChange={(e) => setField("descricao", e.target.value)}
               className="input-base min-h-24"
               placeholder="Detalhes do servico"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold tracking-[0.16em] uppercase text-[#a4a4a4]">
+              Prazos e Timelines
+            </label>
+            <textarea
+              value={form.prazosDescricao}
+              onChange={(e) => setField("prazosDescricao", e.target.value)}
+              className="input-base min-h-20"
+              placeholder="Ex: Kickoff imediato apos aceite. Entrega inicial prevista em ate 30 dias..."
             />
           </div>
 

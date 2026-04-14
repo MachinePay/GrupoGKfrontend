@@ -227,7 +227,8 @@ export function generatePropostaSistemaPdf(contrato) {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(40, 40, 40);
   doc.text(
-    "Kickoff imediato apos aceite. Entrega inicial prevista em ate 30 dias, com evolucao continua sob contrato mensal.",
+    contrato.prazosDescricao ||
+      "Kickoff imediato apos aceite. Entrega inicial prevista em ate 30 dias, com evolucao continua sob contrato mensal.",
     12,
     tableY + 18,
     { maxWidth: 186 },
