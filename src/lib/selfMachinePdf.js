@@ -1,6 +1,8 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { formatCurrency, formatDate } from "./utils.js";
+
+autoTable(jsPDF);
 
 const PRIMARY = [18, 18, 18];
 const ACCENT = [224, 140, 29];
