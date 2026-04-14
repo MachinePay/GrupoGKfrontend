@@ -170,6 +170,7 @@ export const selfMachineApi = {
   atualizar: (id, payload) => api.put(`/selfmachine/saas/${id}`, payload),
   remover: (id) => api.delete(`/selfmachine/saas/${id}`),
   gerarPedido: (id) => api.post(`/selfmachine/saas/${id}/gerar-pedido`),
+  relatorio: () => api.get("/selfmachine/saas/relatorio"),
 };
 
 export default api;

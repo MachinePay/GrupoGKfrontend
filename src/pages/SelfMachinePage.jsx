@@ -9,7 +9,22 @@ import {
   Trash2,
   LoaderCircle,
   ReceiptText,
+  BarChart2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  X,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import { Input, Select } from "../components/ui/FormField.jsx";
 import { selfMachineApi } from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
@@ -455,11 +470,399 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
   );
 }
 
+function KpiCard({ label, value, sub, color = "text-[#f4f4f4]" }) {
+  return (
+    <div className="rounded-2xl border border-[#2f2f2f] bg-[#111]/90 p-4 flex flex-col gap-1">
+      <p className="text-xs uppercase tracking-[0.14em] text-[#9a9a9a]">
+        {label}
+      </p>
+      <p className={`text-xl font-semibold ${color}`}>{value}</p>
+      {sub && <p className="text-xs text-[#666]">{sub}</p>}
+    </div>
+  );
+}
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-[#3c3c3c] bg-[#1a1a1a] px-3 py-2 text-xs shadow-xl">
+      <p className="text-[#c0c0c0] mb-1">{label}</p>
+      {payload.map((entry) => (
+        <p key={entry.name} style={{ color: entry.color }}>
+          {entry.name}: {formatCurrency(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function RelatorioModal({ isOpen, onClose }) {
+  const { data: rel, isLoading } = useQuery({
+    queryKey: ["selfmachine", "relatorio"],
+    queryFn: () => selfMachineApi.relatorio().then((r) => r.data),
+    enabled: isOpen,
+    staleTime: 60_000,
+  });
+
+  if (!isOpen) return null;
+
+  const crescTrend = rel?.crescimento?.taxaCrescimento ?? 0;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm overflow-y-auto p-3 sm:p-6">
+      <div className="mx-auto max-w-5xl rounded-2xl border border-[#2e2e2e] bg-[#111] text-[#f3f3f3] shadow-2xl shadow-black/70">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d2d2d]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-[#d0862b]">
+              SelfMachine
+            </p>
+            <h2 className="text-xl font-semibold">
+              Relatório de Operações SaaS
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-lg border border-[#3c3c3c] text-[#9a9a9a] hover:text-white hover:border-[#666]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-8">
+          {isLoading && (
+            <div className="flex items-center justify-center h-48 text-[#9c9c9c] gap-2">
+              <LoaderCircle size={20} className="animate-spin" />
+              Gerando relatório...
+            </div>
+          )}
+
+          {!isLoading && rel && (
+            <>
+              {/* Financeiro principal */}
+              <section>
+                <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                  Financeiro (Lançamentos Vinculados)
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <KpiCard
+                    label="Receita Realizada"
+                    value={formatCurrency(rel.financeiro.receitaRealizada)}
+                    sub="Entradas registradas"
+                    color="text-emerald-300"
+                  />
+                  <KpiCard
+                    label="Despesas"
+                    value={formatCurrency(rel.financeiro.despesasTotal)}
+                    sub="Saídas registradas"
+                    color="text-rose-300"
+                  />
+                  <KpiCard
+                    label="Lucro Líquido"
+                    value={formatCurrency(rel.financeiro.lucro)}
+                    sub={`Margem ${rel.financeiro.margemLucro.toFixed(1)}%`}
+                    color={
+                      rel.financeiro.lucro >= 0
+                        ? "text-emerald-300"
+                        : "text-rose-300"
+                    }
+                  />
+                  <KpiCard
+                    label="Receita (30 dias)"
+                    value={formatCurrency(rel.resumo.receita30Dias)}
+                    sub="Últimos 30 dias"
+                    color="text-sky-300"
+                  />
+                </div>
+              </section>
+
+              {/* MRR / ARR */}
+              <section>
+                <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                  Recorrência e Contratos
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <KpiCard
+                    label="MRR"
+                    value={formatCurrency(rel.resumo.mrr)}
+                    sub="Mensalidade recorrente"
+                    color="text-[#f6c37f]"
+                  />
+                  <KpiCard
+                    label="ARR"
+                    value={formatCurrency(rel.resumo.arr)}
+                    sub="Receita anual estimada"
+                    color="text-[#f6c37f]"
+                  />
+                  <KpiCard
+                    label="Ticket Médio"
+                    value={formatCurrency(rel.resumo.ticketMedio)}
+                    sub={`${rel.resumo.contratosAtivos} contratos ativos`}
+                  />
+                  <KpiCard
+                    label="Setup Total"
+                    value={formatCurrency(rel.resumo.totalSetupCobrado)}
+                    sub="Soma de todos os setups"
+                  />
+                </div>
+              </section>
+
+              {/* Status contratos */}
+              <section>
+                <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                  Status da Base
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <KpiCard
+                    label="Total Contratos"
+                    value={rel.resumo.totalContratos}
+                  />
+                  <KpiCard
+                    label="Ativos"
+                    value={rel.resumo.contratosAtivos}
+                    color="text-emerald-300"
+                  />
+                  <KpiCard
+                    label="Atrasados"
+                    value={rel.resumo.contratosAtrasados}
+                    color="text-rose-300"
+                  />
+                  <KpiCard
+                    label="Pausados"
+                    value={rel.resumo.contratosPausados}
+                    color="text-orange-300"
+                  />
+                </div>
+              </section>
+
+              {/* Histórico mensal */}
+              <section>
+                <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                  Histórico Mensal (12 meses)
+                </h3>
+                <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-4">
+                  {rel.historicoMensal.every(
+                    (m) => m.entradas === 0 && m.saidas === 0,
+                  ) ? (
+                    <p className="text-sm text-[#666] text-center py-6">
+                      Nenhum lançamento vinculado a clientes SaaS ainda.
+                    </p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart
+                        data={rel.historicoMensal}
+                        margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2d2d2d" />
+                        <XAxis
+                          dataKey="label"
+                          stroke="#555"
+                          tick={{ fill: "#888", fontSize: 11 }}
+                        />
+                        <YAxis
+                          stroke="#555"
+                          tick={{ fill: "#888", fontSize: 11 }}
+                          tickFormatter={(v) =>
+                            v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                          }
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend
+                          wrapperStyle={{ fontSize: 12, color: "#999" }}
+                        />
+                        <Bar
+                          dataKey="entradas"
+                          name="Entradas"
+                          fill="#34d399"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="saidas"
+                          name="Saídas"
+                          fill="#f87171"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </section>
+
+              {/* Gastos e Clientes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Gastos por categoria */}
+                <section>
+                  <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                    Despesas por Categoria
+                  </h3>
+                  <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-4 space-y-2">
+                    {rel.gastosPorCategoria.length === 0 ? (
+                      <p className="text-sm text-[#666] py-4 text-center">
+                        Sem despesas registradas.
+                      </p>
+                    ) : (
+                      rel.gastosPorCategoria.map((g) => (
+                        <div key={g.categoria} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[#c0c0c0] truncate pr-2">
+                              {g.categoria.replace(/_/g, " ")}
+                            </span>
+                            <span className="text-rose-300 whitespace-nowrap">
+                              {formatCurrency(g.valor)}{" "}
+                              <span className="text-[#666]">
+                                ({g.percentual.toFixed(0)}%)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-[#2a2a2a]">
+                            <div
+                              className="h-full rounded-full bg-rose-500/60"
+                              style={{ width: `${g.percentual}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                {/* Receita por cliente */}
+                <section>
+                  <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                    Receita por Cliente
+                  </h3>
+                  <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-4 space-y-2">
+                    {rel.receitasPorCliente.length === 0 ? (
+                      <p className="text-sm text-[#666] py-4 text-center">
+                        Nenhuma receita registrada por cliente.
+                      </p>
+                    ) : (
+                      rel.receitasPorCliente.map((c, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-2 py-1 border-b border-[#1e1e1e] last:border-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {c.nomeCliente}
+                            </p>
+                            <p className="text-xs text-[#666]">
+                              {c.nomeSistema} · {c.count} lançamento
+                              {c.count !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                          <span className="text-emerald-300 text-sm font-semibold whitespace-nowrap">
+                            {formatCurrency(c.valor)}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              {/* Crescimento e Planos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Crescimento */}
+                <section>
+                  <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                    Taxa de Crescimento
+                  </h3>
+                  <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-5 flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`p-3 rounded-xl ${crescTrend > 0 ? "bg-emerald-500/15" : crescTrend < 0 ? "bg-rose-500/15" : "bg-[#1e1e1e]"}`}
+                      >
+                        {crescTrend > 0 ? (
+                          <TrendingUp size={22} className="text-emerald-400" />
+                        ) : crescTrend < 0 ? (
+                          <TrendingDown size={22} className="text-rose-400" />
+                        ) : (
+                          <Minus size={22} className="text-[#666]" />
+                        )}
+                      </div>
+                      <div>
+                        <p
+                          className={`text-2xl font-semibold ${crescTrend > 0 ? "text-emerald-300" : crescTrend < 0 ? "text-rose-300" : "text-[#aaa]"}`}
+                        >
+                          {crescTrend > 0 ? "+" : ""}
+                          {crescTrend.toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-[#666]">vs. mês anterior</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 text-sm">
+                      <div className="flex-1 rounded-xl bg-[#181818] border border-[#272727] p-3 text-center">
+                        <p className="text-[#666] text-xs mb-1">Este Mês</p>
+                        <p className="text-lg font-semibold">
+                          {rel.crescimento.contratosEsteMes}
+                        </p>
+                        <p className="text-[#555] text-xs">novos</p>
+                      </div>
+                      <div className="flex-1 rounded-xl bg-[#181818] border border-[#272727] p-3 text-center">
+                        <p className="text-[#666] text-xs mb-1">Mês Anterior</p>
+                        <p className="text-lg font-semibold">
+                          {rel.crescimento.contratosMesAnterior}
+                        </p>
+                        <p className="text-[#555] text-xs">novos</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Distribuição planos */}
+                <section>
+                  <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                    Distribuição por Plano
+                  </h3>
+                  <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-5 space-y-4">
+                    {rel.distribuicaoPlanos.map((p) => {
+                      const pct =
+                        rel.resumo.totalContratos > 0
+                          ? (p.count / rel.resumo.totalContratos) * 100
+                          : 0;
+                      return (
+                        <div key={p.plano} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">{p.plano}</span>
+                            <span className="text-[#aaa]">
+                              {p.count} contrato{p.count !== 1 ? "s" : ""} ·{" "}
+                              <span className="text-[#f6c37f]">
+                                {formatCurrency(p.mrr)}/mês
+                              </span>
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-[#1e1e1e]">
+                            <div
+                              className="h-full rounded-full bg-[#d0862b]/60"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-[#555]">
+                            Potencial: {formatCurrency(p.mrrPotencial)}/mês ·{" "}
+                            {pct.toFixed(0)}% dos contratos
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SelfMachinePage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [detalhes, setDetalhes] = useState(null);
+  const [showRelatorio, setShowRelatorio] = useState(false);
 
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["selfmachine", "saas"],
@@ -553,14 +956,24 @@ export default function SelfMachinePage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#d0862b] px-4 py-2 text-sm font-semibold text-[#171717] hover:brightness-110"
-        >
-          <Plus size={16} />
-          Novo SaaS
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowRelatorio(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#3a3a3a] bg-[#1a1a1a] px-4 py-2 text-sm font-semibold text-[#d0c3a5] hover:border-[#d0862b]/50 hover:text-[#f6c37f] transition-colors"
+          >
+            <BarChart2 size={16} />
+            Relatório
+          </button>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#d0862b] px-4 py-2 text-sm font-semibold text-[#171717] hover:brightness-110"
+          >
+            <Plus size={16} />
+            Novo SaaS
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -714,6 +1127,11 @@ export default function SelfMachinePage() {
         data={detalhes}
         onClose={() => setDetalhes(null)}
         onGerarPedido={(contrato) => gerarPedidoMutation.mutate(contrato.id)}
+      />
+
+      <RelatorioModal
+        isOpen={showRelatorio}
+        onClose={() => setShowRelatorio(false)}
       />
 
       {(saveMutation.isError ||
