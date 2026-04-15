@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { agendaApi, fornecedoresApi } from "../services/api.js";
+import api, { agendaApi, fornecedoresApi } from "../services/api.js";
 import { useContas, useEmpresas, useProjetos } from "../hooks/useFinanceiro.js";
 import { Badge } from "../components/ui/Badge.jsx";
 import { Input, Select } from "../components/ui/FormField.jsx";
@@ -121,6 +121,10 @@ const INITIAL_FORM = {
   tipo: "PAGAR",
   recurrenteAte: "",
 };
+
+function getCreatorName(item) {
+  return item?.usuarioCriacao?.nome || "Sistema";
+}
 
 function AgendaForm({ item, onCancel, onSuccess }) {
   const qc = useQueryClient();
@@ -349,7 +353,9 @@ function AgendaForm({ item, onCancel, onSuccess }) {
       </div>
 
       {mutation.isError && (
-        <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-2">
+        <p
+          className={`text-sm rounded-xl px-4 py-2 ${mutation.error?.response?.status === 409 ? "text-amber-300 bg-amber-500/10" : "text-red-400 bg-red-500/10"}`}
+        >
           {mutation.error?.response?.data?.message ??
             "Erro ao salvar compromisso."}
         </p>
@@ -424,6 +430,10 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
           </p>
           <p>
             Empresa: <span className="text-white">{item?.empresa?.nome}</span>
+          </p>
+          <p>
+            Criado por:{" "}
+            <span className="text-white">{getCreatorName(item)}</span>
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3">
@@ -685,17 +695,20 @@ function CalendarGrid({
                 {dayItems.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
-                    className={`text-xs truncate rounded px-1 py-0.5 cursor-pointer transition-opacity hover:opacity-80 ${
+                    className={`text-xs rounded px-1 py-0.5 cursor-pointer transition-opacity hover:opacity-80 ${
                       item.status === "REALIZADO"
                         ? "text-slate-500 bg-white/5 line-through"
                         : item.tipo === "RECEBER"
                           ? "text-emerald-300 bg-emerald-500/10"
                           : "text-red-300 bg-red-500/10"
                     }`}
-                    title={`${item.titulo}${item.origem ? ` — ${item.origem}` : ""} (${item.empresa?.nome})`}
+                    title={`${item.titulo}${item.origem ? ` — ${item.origem}` : ""} (${item.empresa?.nome}) · Criado por: ${getCreatorName(item)}`}
                     onClick={() => item.status !== "REALIZADO" && onBaixa(item)}
                   >
-                    {item.titulo}
+                    <div className="truncate">{item.titulo}</div>
+                    <div className="truncate text-[10px] opacity-80">
+                      {getCreatorName(item)}
+                    </div>
                   </div>
                 ))}
                 {dayItems.length > 3 && (
@@ -725,6 +738,7 @@ export default function CalendarioPage() {
   const [statusFiltro, setStatusFiltro] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [empresaFiltro, setEmpresaFiltro] = useState("");
+  const [criadorFiltro, setCriadorFiltro] = useState("");
   const [baixaItem, setBaixaItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -734,6 +748,11 @@ export default function CalendarioPage() {
   const [historicoPage, setHistoricoPage] = useState(1);
   const qc = useQueryClient();
 
+  const { data: usuariosCriadores = [] } = useQuery({
+    queryKey: ["agenda", "criadores"],
+    queryFn: () => api.get("/usuarios").then((r) => r.data),
+  });
+
   const { data: itens = [], isLoading } = useQuery({
     queryKey: [
       "agenda",
@@ -742,6 +761,7 @@ export default function CalendarioPage() {
       statusFiltro,
       tipoFiltro,
       empresaFiltro,
+      criadorFiltro,
     ],
     queryFn: () =>
       agendaApi
@@ -751,6 +771,7 @@ export default function CalendarioPage() {
           ...(statusFiltro && { status: statusFiltro }),
           ...(tipoFiltro && { tipo: tipoFiltro }),
           ...(empresaFiltro && { empresaId: empresaFiltro }),
+          ...(criadorFiltro && { usuarioCriacaoId: criadorFiltro }),
         })
         .then((r) => r.data),
   });
@@ -765,6 +786,7 @@ export default function CalendarioPage() {
       dataInicio,
       dataFim,
       empresaFiltro,
+      criadorFiltro,
       historicoPage,
     ],
     queryFn: () =>
@@ -773,6 +795,7 @@ export default function CalendarioPage() {
           dataInicio,
           dataFim,
           ...(empresaFiltro && { empresaId: empresaFiltro }),
+          ...(criadorFiltro && { usuarioCriacaoId: criadorFiltro }),
           limit: 10,
           page: historicoPage,
         })
@@ -796,6 +819,7 @@ export default function CalendarioPage() {
       calendarDataInicio,
       calendarDataFim,
       empresaFiltro,
+      criadorFiltro,
     ],
     queryFn: () =>
       agendaApi
@@ -803,6 +827,7 @@ export default function CalendarioPage() {
           dataInicio: calendarDataInicio,
           dataFim: calendarDataFim,
           ...(empresaFiltro && { empresaId: empresaFiltro }),
+          ...(criadorFiltro && { usuarioCriacaoId: criadorFiltro }),
         })
         .then((r) => r.data),
     enabled: viewMode === "calendario",
@@ -959,6 +984,17 @@ export default function CalendarioPage() {
                 placeholder="Todas as empresas"
               />
             </div>
+            <div className="min-w-52">
+              <Select
+                value={criadorFiltro}
+                onChange={(e) => setCriadorFiltro(e.target.value)}
+                options={usuariosCriadores.map((usuario) => ({
+                  value: usuario.id,
+                  label: usuario.nome,
+                }))}
+                placeholder="Todos os criadores"
+              />
+            </div>
           </div>
           {loadingCalendar ? (
             <div className="text-sm text-slate-500 py-8 text-center">
@@ -1032,6 +1068,20 @@ export default function CalendarioPage() {
                 placeholder="Todas as empresas"
               />
             </div>
+            <div className="min-w-52">
+              <Select
+                value={criadorFiltro}
+                onChange={(e) => {
+                  setCriadorFiltro(e.target.value);
+                  setHistoricoPage(1);
+                }}
+                options={usuariosCriadores.map((usuario) => ({
+                  value: usuario.id,
+                  label: usuario.nome,
+                }))}
+                placeholder="Todos os criadores"
+              />
+            </div>
             <div className="flex gap-1">
               {STATUS_FILTER.map((s) => (
                 <button
@@ -1101,6 +1151,9 @@ export default function CalendarioPage() {
                       {item.descricao}
                     </div>
                   )}
+                  <div className="text-xs text-slate-500 truncate mt-0.5">
+                    Criado por: {getCreatorName(item)}
+                  </div>
                   <div className="text-xs text-slate-400 truncate mt-0.5 space-x-2">
                     {item.tipoPagamento && <span>💳 {item.tipoPagamento}</span>}
                     {item.fornecedor && <span>🤝 {item.fornecedor.nome}</span>}
@@ -1195,6 +1248,9 @@ export default function CalendarioPage() {
                   <p className="text-sm text-white truncate">{item.titulo}</p>
                   <p className="text-xs text-slate-500 truncate">
                     {item.empresa?.nome} · {formatDate(item.data)}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">
+                    Criado por: {getCreatorName(item)}
                   </p>
                 </div>
                 <div className="text-right">

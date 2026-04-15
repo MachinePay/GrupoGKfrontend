@@ -18,7 +18,7 @@ import {
   ExternalLink,
   Store,
 } from "lucide-react";
-import { cadastrosApi, authApi, fornecedoresApi } from "../services/api.js";
+import api, { cadastrosApi, fornecedoresApi } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas } from "../hooks/useFinanceiro.js";
@@ -607,31 +607,112 @@ function UsuariosTab() {
     email: "",
     senha: "",
     perfil: "FINANCEIRO",
+    contaBancariaId: "",
   });
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ["users-config"],
-    queryFn: () => authApi.listUsers().then((r) => r.data),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data) => authApi.createUser(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["users-config"] });
-      setShowForm(false);
-      setForm({ nome: "", email: "", senha: "", perfil: "FINANCEIRO" });
+    queryKey: ["usuarios"],
+    queryFn: async () => {
+      const { data } = await api.get("/usuarios");
+      return data;
     },
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: (id) => authApi.toggleUser(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users-config"] }),
+  const { data: contas = [] } = useQuery({
+    queryKey: ["contas-config"],
+    queryFn: () => cadastrosApi.listarContas().then((r) => r.data),
   });
 
+  function resetForm() {
+    setForm({
+      nome: "",
+      email: "",
+      senha: "",
+      perfil: "FINANCEIRO",
+      contaBancariaId: "",
+    });
+    setEditingId(null);
+  }
+
+  function handleEdit(usuario) {
+    setEditingId(usuario.id);
+    setForm({
+      nome: usuario.nome,
+      email: usuario.email,
+      senha: "",
+      perfil: usuario.perfil,
+      contaBancariaId: usuario.contaBancariaId
+        ? String(usuario.contaBancariaId)
+        : "",
+    });
+    setShowForm(true);
+  }
+
+  const createMutation = useMutation({
+    mutationFn: async (data) => {
+      const payload = { ...data };
+      if (payload.contaBancariaId) {
+        payload.contaBancariaId = Number(payload.contaBancariaId);
+      } else {
+        delete payload.contaBancariaId;
+      }
+      const { data: response } = await api.post("/usuarios", payload);
+      return response;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+      resetForm();
+      setShowForm(false);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data) => {
+      const payload = { ...data };
+      if (payload.contaBancariaId) {
+        payload.contaBancariaId = Number(payload.contaBancariaId);
+      } else {
+        delete payload.contaBancariaId;
+      }
+      if (!payload.senha) {
+        delete payload.senha;
+      }
+      const { data: response } = await api.put(
+        `/usuarios/${editingId}`,
+        payload,
+      );
+      return response;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+      resetForm();
+      setShowForm(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      const { data } = await api.delete(`/usuarios/${id}`);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["usuarios"] }),
+  });
+
+  function handleSubmit() {
+    if (editingId) {
+      updateMutation.mutate(form);
+      return;
+    }
+    createMutation.mutate(form);
+  }
+
+  const isCaixaSelected = form.perfil === "CAIXA";
   const perfilOpts = [
     { value: "ADMIN", label: "Administrador" },
     { value: "FINANCEIRO", label: "Financeiro" },
+    { value: "CAIXA", label: "Caixa" },
   ];
 
   return (
@@ -639,7 +720,15 @@ function UsuariosTab() {
       <div className="flex justify-between items-center">
         <p className="text-sm text-slate-400">{usuarios.length} usuário(s)</p>
         <button
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              resetForm();
+              return;
+            }
+            resetForm();
+            setShowForm(true);
+          }}
           className="btn-primary flex items-center gap-1.5 text-sm px-3 py-2"
         >
           {showForm ? <X size={14} /> : <Plus size={14} />}
@@ -664,7 +753,7 @@ function UsuariosTab() {
               }
             />
             <Input
-              label="Senha"
+              label={editingId ? "Senha (opcional)" : "Senha"}
               type="password"
               value={form.senha}
               onChange={(e) =>
@@ -676,21 +765,48 @@ function UsuariosTab() {
               options={perfilOpts}
               value={form.perfil}
               onChange={(e) =>
-                setForm((f) => ({ ...f, perfil: e.target.value }))
+                setForm((f) => ({
+                  ...f,
+                  perfil: e.target.value,
+                  contaBancariaId: "",
+                }))
               }
             />
           </div>
+
+          {isCaixaSelected && (
+            <Select
+              label="Conta bancária (obrigatória para caixa)"
+              options={[
+                { value: "", label: "Selecione uma conta" },
+                ...contas.map((conta) => ({
+                  value: String(conta.id),
+                  label: `${conta.banco} - ${conta.nome}`,
+                })),
+              ]}
+              value={form.contaBancariaId}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, contaBancariaId: e.target.value }))
+              }
+            />
+          )}
+
           <button
-            onClick={() => createMutation.mutate(form)}
+            onClick={handleSubmit}
             className="btn-primary w-full"
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || updateMutation.isPending}
           >
-            {createMutation.isPending ? "Salvando…" : "Criar Usuário"}
+            {createMutation.isPending || updateMutation.isPending
+              ? "Salvando…"
+              : editingId
+                ? "Salvar Alterações"
+                : "Criar Usuário"}
           </button>
-          {createMutation.isError && (
+          {(createMutation.isError || updateMutation.isError) && (
             <p className="text-xs text-red-400">
-              {createMutation.error?.response?.data?.message ??
-                "Erro ao criar usuário"}
+              {createMutation.error?.response?.data?.message ||
+                updateMutation.error?.response?.data?.message ||
+                "Erro ao salvar usuário"}
             </p>
           )}
         </div>
@@ -702,6 +818,11 @@ function UsuariosTab() {
             Carregando…
           </div>
         )}
+        {usuarios.length === 0 && !isLoading && (
+          <div className="p-6 text-center text-slate-500 text-sm">
+            Nenhum usuário cadastrado
+          </div>
+        )}
         {usuarios.map((u) => (
           <div
             key={u.id}
@@ -711,18 +832,35 @@ function UsuariosTab() {
               <p className="text-sm text-white font-medium">{u.nome}</p>
               <p className="text-xs text-slate-500">
                 {u.email} · {u.perfil}
+                {u.contaBancariaId
+                  ? ` · ${
+                      contas.find((c) => c.id === u.contaBancariaId)?.nome ||
+                      "Conta vinculada"
+                    }`
+                  : ""}
               </p>
             </div>
-            <button
-              onClick={() => toggleMutation.mutate(u.id)}
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              {u.ativo ? (
-                <ToggleRight size={22} className="text-emerald-400" />
-              ) : (
-                <ToggleLeft size={22} />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleEdit(u)}
+                className="btn-ghost px-2 py-1 text-xs flex items-center gap-1"
+              >
+                <Pencil size={12} /> Editar
+              </button>
+              <button
+                onClick={() => {
+                  const ok = window.confirm(
+                    `Deseja excluir o usuário "${u.nome}"? Esta ação não pode ser desfeita.`,
+                  );
+                  if (!ok) return;
+                  deleteMutation.mutate(u.id);
+                }}
+                className="btn-ghost px-2 py-1 text-xs text-red-300 hover:text-red-200 flex items-center gap-1"
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 size={12} /> Excluir
+              </button>
+            </div>
           </div>
         ))}
       </div>

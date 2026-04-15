@@ -33,6 +33,14 @@ const NAV = [
 
 export default function Sidebar() {
   const { user, logout, isAdmin } = useAuth();
+  const isCaixa = user?.perfil === "CAIXA";
+  const visibleNav = isCaixa
+    ? NAV.filter((item) =>
+        ["/lancamentos", "/calendario", "/bancos", "/configuracoes"].includes(
+          item.to,
+        ),
+      )
+    : NAV;
 
   return (
     <aside
@@ -58,7 +66,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ to, label, Icon }) => (
+        {visibleNav.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -89,7 +97,7 @@ export default function Sidebar() {
               {user?.nome ?? "Usuário"}
             </p>
             <p className="text-xs text-slate-600 dark:text-slate-500">
-              {isAdmin ? "Administrador" : "Financeiro"}
+              {isAdmin ? "Administrador" : isCaixa ? "Caixa" : "Financeiro"}
             </p>
           </div>
         </div>
