@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from "./utils.js";
 const PRIMARY = [18, 18, 18];
 const ACCENT = [224, 140, 29];
 const LIGHT = [245, 245, 245];
-const SELF_MACHINE_LOGO_PATH = "/logoSelfmachine.jpeg";
+const SELF_MACHINE_LOGO_PATH = "/logoSelfmachine.png";
 
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
@@ -88,7 +88,7 @@ async function drawHeader(doc, contrato, title) {
     const selfMachineLogoDataUrl = await loadImageAsDataUrl(
       SELF_MACHINE_LOGO_PATH,
     );
-    doc.addImage(selfMachineLogoDataUrl, "JPEG", 8, 4, 70, 32);
+    doc.addImage(selfMachineLogoDataUrl, "PNG", 8, 4, 70, 32);
   } catch {
     // Fallback para texto se a imagem local nao carregar
     doc.setTextColor(255, 255, 255);
