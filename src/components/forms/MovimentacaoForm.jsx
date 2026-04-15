@@ -152,7 +152,11 @@ export default function MovimentacaoForm({ onSuccess }) {
   const mutation = useMutation({
     mutationFn: (payload) => movimentacoesApi.criar(payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "consolidado"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "contas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "empresa"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "bancos"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "maisquiosque"] });
       qc.invalidateQueries({ queryKey: ["movimentacoes"] });
       setSuccess(true);
       setForm(INITIAL);
