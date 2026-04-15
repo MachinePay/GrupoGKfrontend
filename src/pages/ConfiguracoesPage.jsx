@@ -607,7 +607,7 @@ function UsuariosTab() {
     email: "",
     senha: "",
     perfil: "FINANCEIRO",
-    contaBancariaId: "",
+    contaBancariaIds: [],
   });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -631,7 +631,7 @@ function UsuariosTab() {
       email: "",
       senha: "",
       perfil: "FINANCEIRO",
-      contaBancariaId: "",
+      contaBancariaIds: [],
     });
     setEditingId(null);
   }
@@ -643,9 +643,9 @@ function UsuariosTab() {
       email: usuario.email,
       senha: "",
       perfil: usuario.perfil,
-      contaBancariaId: usuario.contaBancariaId
-        ? String(usuario.contaBancariaId)
-        : "",
+      contaBancariaIds: (usuario.contaBancariaIds || []).map((id) =>
+        String(id),
+      ),
     });
     setShowForm(true);
   }
@@ -653,10 +653,12 @@ function UsuariosTab() {
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const payload = { ...data };
-      if (payload.contaBancariaId) {
-        payload.contaBancariaId = Number(payload.contaBancariaId);
+      if (payload.contaBancariaIds?.length) {
+        payload.contaBancariaIds = payload.contaBancariaIds.map((id) =>
+          Number(id),
+        );
       } else {
-        delete payload.contaBancariaId;
+        delete payload.contaBancariaIds;
       }
       const { data: response } = await api.post("/usuarios", payload);
       return response;
@@ -671,10 +673,12 @@ function UsuariosTab() {
   const updateMutation = useMutation({
     mutationFn: async (data) => {
       const payload = { ...data };
-      if (payload.contaBancariaId) {
-        payload.contaBancariaId = Number(payload.contaBancariaId);
+      if (payload.contaBancariaIds?.length) {
+        payload.contaBancariaIds = payload.contaBancariaIds.map((id) =>
+          Number(id),
+        );
       } else {
-        delete payload.contaBancariaId;
+        payload.contaBancariaIds = [];
       }
       if (!payload.senha) {
         delete payload.senha;
@@ -768,27 +772,41 @@ function UsuariosTab() {
                 setForm((f) => ({
                   ...f,
                   perfil: e.target.value,
-                  contaBancariaId: "",
+                  contaBancariaIds: [],
                 }))
               }
             />
           </div>
 
           {isCaixaSelected && (
-            <Select
-              label="Conta bancária (obrigatória para caixa)"
-              options={[
-                { value: "", label: "Selecione uma conta" },
-                ...contas.map((conta) => ({
-                  value: String(conta.id),
-                  label: `${conta.banco} - ${conta.nome}`,
-                })),
-              ]}
-              value={form.contaBancariaId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, contaBancariaId: e.target.value }))
-              }
-            />
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Contas bancárias (obrigatórias para caixa)
+              </label>
+              <select
+                multiple
+                value={form.contaBancariaIds}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    contaBancariaIds: Array.from(
+                      e.target.selectedOptions,
+                      (option) => option.value,
+                    ),
+                  }))
+                }
+                className="input-base min-h-36"
+              >
+                {contas.map((conta) => (
+                  <option key={conta.id} value={String(conta.id)}>
+                    {conta.banco} - {conta.nome}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Segure Ctrl para selecionar mais de uma conta.
+              </p>
+            </div>
           )}
 
           <button
@@ -832,11 +850,10 @@ function UsuariosTab() {
               <p className="text-sm text-white font-medium">{u.nome}</p>
               <p className="text-xs text-slate-500">
                 {u.email} · {u.perfil}
-                {u.contaBancariaId
-                  ? ` · ${
-                      contas.find((c) => c.id === u.contaBancariaId)?.nome ||
-                      "Conta vinculada"
-                    }`
+                {u.contasBancarias?.length
+                  ? ` · ${u.contasBancarias
+                      .map((conta) => `${conta.banco} - ${conta.nome}`)
+                      .join(", ")}`
                   : ""}
               </p>
             </div>
