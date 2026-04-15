@@ -4,6 +4,25 @@ import { formatCurrency, formatDate } from "./utils.js";
 const PRIMARY = [18, 18, 18];
 const ACCENT = [224, 140, 29];
 const LIGHT = [245, 245, 245];
+const SELF_MACHINE_LOGO_PATH = "/logoSelfmachine.jpeg";
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadImageAsDataUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Falha ao carregar imagem: ${url}`);
+  }
+  const blob = await response.blob();
+  return blobToDataUrl(blob);
+}
 
 // Helper para desenhar tabelas sem plugin
 function drawSimpleTable(doc, startY, headers, rows, options = {}) {
@@ -58,21 +77,29 @@ function drawSimpleTable(doc, startY, headers, rows, options = {}) {
   return y;
 }
 
-function drawHeader(doc, contrato, title) {
+async function drawHeader(doc, contrato, title) {
   const width = doc.internal.pageSize.getWidth();
 
   doc.setFillColor(...PRIMARY);
   doc.rect(0, 0, width, 40, "F");
 
-  // SELFMACHINE logo/text on left
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("SELFMACHINE", 12, 14);
+  // Logo SelfMachine fixa no lado esquerdo
+  try {
+    const selfMachineLogoDataUrl = await loadImageAsDataUrl(
+      SELF_MACHINE_LOGO_PATH,
+    );
+    doc.addImage(selfMachineLogoDataUrl, "JPEG", 8, 4, 70, 32);
+  } catch {
+    // Fallback para texto se a imagem local nao carregar
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("SELFMACHINE", 12, 14);
 
-  doc.setTextColor(...ACCENT);
-  doc.setFontSize(10);
-  doc.text("Centro de Comando SaaS - Grupo GK", 12, 20);
+    doc.setTextColor(...ACCENT);
+    doc.setFontSize(10);
+    doc.text("Centro de Comando SaaS - Grupo GK", 12, 20);
+  }
 
   const hasLogo = contrato.logoParceiraUrl?.startsWith("data:image");
 
@@ -103,9 +130,9 @@ function drawHeader(doc, contrato, title) {
   }
 }
 
-export function generatePedidoPagamentoPdf(contrato) {
+export async function generatePedidoPagamentoPdf(contrato) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  drawHeader(doc, contrato, "Pedido de Pagamento / Recibo");
+  await drawHeader(doc, contrato, "Pedido de Pagamento / Recibo");
 
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "bold");
@@ -169,9 +196,9 @@ export function generatePedidoPagamentoPdf(contrato) {
   );
 }
 
-export function generatePropostaSistemaPdf(contrato) {
+export async function generatePropostaSistemaPdf(contrato) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  drawHeader(doc, contrato, "Proposta Comercial de Sistema");
+  await drawHeader(doc, contrato, "Proposta Comercial de Sistema");
 
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "bold");
