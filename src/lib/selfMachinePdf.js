@@ -131,8 +131,8 @@ export function generatePedidoPagamentoPdf(contrato) {
   ];
 
   // Add PIX key if payment method is PIX
-  if (contrato.meioPagamento?.toUpperCase() === "PIX" && contrato.chavePix) {
-    tableData.push(["Chave PIX", contrato.chavePix]);
+  if (contrato.meioPagamento?.toUpperCase() === "PIX") {
+    tableData.push(["Chave PIX", contrato.chavePix || "-"]);
   }
 
   tableData.push([
