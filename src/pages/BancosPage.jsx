@@ -464,10 +464,20 @@ export default function BancosPage() {
                             </span>
                           </td>
                           <td
-                            className={`px-5 py-3 text-right font-semibold tabular-nums whitespace-nowrap ${TIPO_COLOR[item.tipo] ?? "text-white"}`}
+                            className={`px-5 py-3 text-right font-semibold tabular-nums whitespace-nowrap ${
+                              item.tipo === "AJUSTE_SALDO"
+                                ? Number(item.valor) >= 0
+                                  ? "text-amber-400"
+                                  : "text-amber-600"
+                                : (TIPO_COLOR[item.tipo] ?? "text-white")
+                            }`}
                           >
-                            {TIPO_SIGNAL[item.tipo]}
-                            {formatCurrency(item.valor)}
+                            {item.tipo === "AJUSTE_SALDO"
+                              ? Number(item.valor) >= 0
+                                ? "+"
+                                : "-"
+                              : TIPO_SIGNAL[item.tipo]}
+                            {formatCurrency(Math.abs(Number(item.valor)))}
                           </td>
                         </tr>
                       );

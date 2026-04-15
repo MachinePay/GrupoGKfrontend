@@ -200,18 +200,24 @@ export default function DashboardPage() {
                         ? mov.contaDestino?.nome
                         : mov.tipo === "SAIDA"
                           ? mov.contaOrigem?.nome
-                          : "Transferência"}
+                          : mov.tipo === "AJUSTE_SALDO"
+                            ? mov.contaDestino?.nome
+                            : "Transferência"}
                     </p>
                   </div>
                   <p
                     className={`text-right font-semibold tabular-nums whitespace-nowrap ${
-                      mov.tipo === "ENTRADA"
-                        ? "text-slate-900 dark:text-white" // Crédito em preto
+                      mov.tipo === "ENTRADA" ||
+                      (mov.tipo === "AJUSTE_SALDO" && Number(mov.valor) > 0)
+                        ? "text-slate-900 dark:text-white" // Crédito em branco/preto
                         : "text-red-400" // Débito em vermelho
                     }`}
                   >
-                    {mov.tipo === "ENTRADA" ? "+" : "-"}
-                    {formatCurrency(mov.valor)}
+                    {mov.tipo === "ENTRADA" ||
+                    (mov.tipo === "AJUSTE_SALDO" && Number(mov.valor) > 0)
+                      ? "+"
+                      : "-"}
+                    {formatCurrency(Math.abs(Number(mov.valor)))}
                   </p>
                 </div>
               ))}
