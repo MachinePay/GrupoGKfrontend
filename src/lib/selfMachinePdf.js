@@ -74,27 +74,32 @@ function drawHeader(doc, contrato, title) {
   doc.setFontSize(10);
   doc.text("Centro de Comando SaaS - Grupo GK", 12, 20);
 
-  // Title on right
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(title, width - 12, 14, { align: "right" });
+  const hasLogo = contrato.logoParceiraUrl?.startsWith("data:image");
 
-  // Client name on right
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...LIGHT);
-  doc.setFontSize(9);
-  doc.text(contrato.nomeCliente || "Cliente", width - 12, 22, {
-    align: "right",
-  });
-
-  // Partner logo (larger, on right)
-  if (contrato.logoParceiraUrl?.startsWith("data:image")) {
+  if (hasLogo) {
+    // Logo only on right — no overlapping text
     try {
       doc.addImage(contrato.logoParceiraUrl, "PNG", width - 50, 4, 40, 32);
     } catch {
-      // Ignora erro de imagem invalida
+      // Ignora erro de imagem invalida; mostra texto como fallback
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(title, width - 12, 14, { align: "right" });
     }
+  } else {
+    // Sem logo: mostra titulo e cliente no lado direito
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(title, width - 12, 14, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...LIGHT);
+    doc.setFontSize(9);
+    doc.text(contrato.nomeCliente || "Cliente", width - 12, 22, {
+      align: "right",
+    });
   }
 }
 
@@ -105,7 +110,7 @@ export function generatePedidoPagamentoPdf(contrato) {
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("Dados do Pedido", 12, 50);
+  doc.text("Dados do Pedido", 12, 58);
 
   const tableData = [
     ["Numero do PC", contrato.numeroPc || "-"],
@@ -135,7 +140,7 @@ export function generatePedidoPagamentoPdf(contrato) {
     `${contrato.statusSistema || "-"} / ${contrato.statusMensalidade || "-"}`,
   ]);
 
-  let y = drawSimpleTable(doc, 53, ["Campo", "Valor"], tableData, {
+  let y = drawSimpleTable(doc, 61, ["Campo", "Valor"], tableData, {
     cellWidth: 60,
     headerBgColor: PRIMARY,
   });
@@ -171,26 +176,26 @@ export function generatePropostaSistemaPdf(contrato) {
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text(contrato.nomeSistema || "Projeto SaaS", 12, 44);
+  doc.text(contrato.nomeSistema || "Projeto SaaS", 12, 54);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`Cliente: ${contrato.nomeCliente || "-"}`, 12, 52);
-  doc.text(`Vendedor: ${contrato.vendedor || "-"}`, 12, 58);
-  doc.text(`Plano: ${contrato.tipoPlano || "-"}`, 12, 64);
+  doc.text(`Cliente: ${contrato.nomeCliente || "-"}`, 12, 62);
+  doc.text(`Vendedor: ${contrato.vendedor || "-"}`, 12, 68);
+  doc.text(`Plano: ${contrato.tipoPlano || "-"}`, 12, 74);
 
   doc.setFillColor(250, 244, 230);
-  doc.rect(12, 72, 186, 26, "F");
+  doc.rect(12, 82, 186, 26, "F");
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...ACCENT);
-  doc.text("Escopo Tecnico", 16, 80);
+  doc.text("Escopo Tecnico", 16, 89);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(35, 35, 35);
   doc.text(
     contrato.descricao ||
       "Desenvolvimento de sistema web com foco operacional, financeiro e escalabilidade em modelo SaaS multi-tenant.",
     16,
-    86,
+    95,
     { maxWidth: 176 },
   );
 
@@ -211,7 +216,7 @@ export function generatePropostaSistemaPdf(contrato) {
 
   let tableY = drawSimpleTable(
     doc,
-    108,
+    118,
     ["Item", "Detalhe"],
     propostaTableData,
     {
