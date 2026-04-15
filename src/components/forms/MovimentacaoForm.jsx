@@ -13,6 +13,12 @@ const TIPOS = [
   { value: "ENTRADA", label: "Entrada" },
   { value: "SAIDA", label: "Saída" },
   { value: "TRANSFERENCIA", label: "Transferência" },
+  { value: "AJUSTE_SALDO", label: "Ajuste de Saldo" },
+];
+
+const AJUSTE_SALDO_OPERACOES = [
+  { value: "SOMAR", label: "Somar ao saldo" },
+  { value: "SUBTRAIR", label: "Subtrair do saldo" },
 ];
 
 const CATEGORIAS = [
@@ -99,6 +105,7 @@ const INITIAL = {
   subcategoria: "",
   saasClienteId: "",
   saasLancamentoTipo: "",
+  ajusteSaldoOperacao: "SOMAR",
 };
 
 export default function MovimentacaoForm({ onSuccess }) {
@@ -128,11 +135,13 @@ export default function MovimentacaoForm({ onSuccess }) {
     enabled: isSelfMachine,
   });
   const categoriaOptions =
-    form.tipo === "ENTRADA"
-      ? CATEGORIAS_ENTRADA
-      : form.tipo === "SAIDA"
-        ? CATEGORIAS_SAIDA
-        : CATEGORIAS;
+    form.tipo === "AJUSTE_SALDO"
+      ? [{ value: "AJUSTE_SALDO", label: "Ajuste de Saldo" }]
+      : form.tipo === "ENTRADA"
+        ? CATEGORIAS_ENTRADA
+        : form.tipo === "SAIDA"
+          ? CATEGORIAS_SAIDA
+          : CATEGORIAS;
   const tipoDespesaOptions =
     form.categoria === "CUSTO_FIXO"
       ? TIPOS_DESPESA_CUSTO_FIXO
@@ -178,6 +187,32 @@ export default function MovimentacaoForm({ onSuccess }) {
         return;
       }
 
+      if (field === "tipo") {
+        setForm((prev) => {
+          if (nextValue === "AJUSTE_SALDO") {
+            return {
+              ...prev,
+              tipo: nextValue,
+              status: "REALIZADO",
+              categoria: "AJUSTE_SALDO",
+              tipoDespesa: "",
+              contaOrigemId: "",
+              ajusteSaldoOperacao: prev.ajusteSaldoOperacao || "SOMAR",
+            };
+          }
+
+          return {
+            ...prev,
+            tipo: nextValue,
+            categoria: prev.categoria === "AJUSTE_SALDO" ? "" : prev.categoria,
+            ajusteSaldoOperacao: "SOMAR",
+          };
+        });
+
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+        return;
+      }
+
       setForm((prev) => ({ ...prev, [field]: nextValue }));
       if (
         field === "categoria" &&
@@ -200,6 +235,12 @@ export default function MovimentacaoForm({ onSuccess }) {
     if (!form.status) e.status = "Obrigatório";
     if (form.tipo !== "TRANSFERENCIA" && !form.categoria)
       e.categoria = "Obrigatório";
+    if (form.tipo === "AJUSTE_SALDO" && form.status !== "REALIZADO") {
+      e.status = "Ajuste de saldo deve ser realizado";
+    }
+    if (form.tipo === "AJUSTE_SALDO" && !form.ajusteSaldoOperacao) {
+      e.ajusteSaldoOperacao = "Obrigatório";
+    }
     if (
       (form.categoria === "CUSTO_FIXO" ||
         form.categoria === "CUSTO_VARIAVEL") &&
@@ -207,16 +248,19 @@ export default function MovimentacaoForm({ onSuccess }) {
     ) {
       e.tipoDespesa = "Obrigatório para custo";
     }
-    if (isMaisQuiosque && !form.projetoId)
+    if (isMaisQuiosque && form.tipo !== "AJUSTE_SALDO" && !form.projetoId)
       e.projetoId = "Obrigatório para MaisQuiosque";
-    if (isGiraKids && !form.subcategoria)
+    if (isGiraKids && form.tipo !== "AJUSTE_SALDO" && !form.subcategoria)
       e.subcategoria = "Obrigatório para GiraKids";
     if (isSelfMachine && form.saasClienteId && !form.saasLancamentoTipo)
       e.saasLancamentoTipo = "Selecione o tipo quando informar cliente SaaS";
     if (isSelfMachine && form.saasLancamentoTipo && !form.saasClienteId)
       e.saasClienteId = "Selecione cliente SaaS quando informar tipo";
-    if (form.tipo === "ENTRADA" && !form.contaDestinoId)
-      e.contaDestinoId = "Obrigatório para Entrada";
+    if (
+      (form.tipo === "ENTRADA" || form.tipo === "AJUSTE_SALDO") &&
+      !form.contaDestinoId
+    )
+      e.contaDestinoId = "Obrigatório";
     if (form.tipo === "SAIDA" && !form.contaOrigemId)
       e.contaOrigemId = "Obrigatório para Saída";
     if (form.tipo === "TRANSFERENCIA") {
@@ -237,18 +281,26 @@ export default function MovimentacaoForm({ onSuccess }) {
       empresaId: Number(form.empresaId),
       tipo: form.tipo,
       valor: form.valor,
-      categoria: form.categoria || undefined,
-      tipoDespesa: form.tipoDespesa || undefined,
+      categoria:
+        form.tipo === "AJUSTE_SALDO"
+          ? "AJUSTE_SALDO"
+          : form.categoria || undefined,
+      tipoDespesa:
+        form.tipo === "AJUSTE_SALDO"
+          ? undefined
+          : form.tipoDespesa || undefined,
       canalOrigem: form.canalOrigem || undefined,
       centroOperacao: form.centroOperacao || undefined,
       referencia: form.referencia || undefined,
-      status: form.status,
+      status: form.tipo === "AJUSTE_SALDO" ? "REALIZADO" : form.status,
       contaOrigemId: form.contaOrigemId
         ? Number(form.contaOrigemId)
         : undefined,
       contaDestinoId: form.contaDestinoId
         ? Number(form.contaDestinoId)
         : undefined,
+      ajusteSaldoOperacao:
+        form.tipo === "AJUSTE_SALDO" ? form.ajusteSaldoOperacao : undefined,
       projetoId: form.projetoId ? Number(form.projetoId) : undefined,
       subcategoria: form.subcategoria || undefined,
       saasClienteId: form.saasClienteId
@@ -325,13 +377,23 @@ export default function MovimentacaoForm({ onSuccess }) {
           placeholder="Selecione…"
           error={errors.categoria}
         />
-        <Select
-          label="Status"
-          value={form.status}
-          onChange={set("status")}
-          options={STATUS_OPTS}
-          error={errors.status}
-        />
+        {form.tipo === "AJUSTE_SALDO" ? (
+          <Select
+            label="Operação do Ajuste"
+            value={form.ajusteSaldoOperacao}
+            onChange={set("ajusteSaldoOperacao")}
+            options={AJUSTE_SALDO_OPERACOES}
+            error={errors.ajusteSaldoOperacao}
+          />
+        ) : (
+          <Select
+            label="Status"
+            value={form.status}
+            onChange={set("status")}
+            options={STATUS_OPTS}
+            error={errors.status}
+          />
+        )}
       </div>
 
       {(form.categoria === "CUSTO_FIXO" ||
@@ -360,9 +422,13 @@ export default function MovimentacaoForm({ onSuccess }) {
             error={errors.contaOrigemId}
           />
         )}
-        {(form.tipo === "ENTRADA" || form.tipo === "TRANSFERENCIA") && (
+        {(form.tipo === "ENTRADA" ||
+          form.tipo === "TRANSFERENCIA" ||
+          form.tipo === "AJUSTE_SALDO") && (
           <Select
-            label="Conta Destino"
+            label={
+              form.tipo === "AJUSTE_SALDO" ? "Conta do Ajuste" : "Conta Destino"
+            }
             value={form.contaDestinoId}
             onChange={set("contaDestinoId")}
             options={contaOptions}

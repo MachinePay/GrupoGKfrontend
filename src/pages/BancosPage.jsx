@@ -21,18 +21,21 @@ const TIPO_COLOR = {
   ENTRADA: "text-emerald-400",
   SAIDA: "text-red-400",
   TRANSFERENCIA: "text-blue-400",
+  AJUSTE_SALDO: "text-amber-400",
 };
 
 const TIPO_LABEL = {
   ENTRADA: "Entrada",
   SAIDA: "Saída",
   TRANSFERENCIA: "Transf.",
+  AJUSTE_SALDO: "Ajuste",
 };
 
 const TIPO_SIGNAL = {
   ENTRADA: "+",
   SAIDA: "-",
   TRANSFERENCIA: "↔",
+  AJUSTE_SALDO: "±",
 };
 
 const PAGE_SIZE = 30;
@@ -423,13 +426,17 @@ export default function BancosPage() {
                           ? isOrigem
                             ? `→ ${item.contaDestino?.banco ?? ""} ${item.contaDestino?.nome ?? ""}`
                             : `← ${item.contaOrigem?.banco ?? ""} ${item.contaOrigem?.nome ?? ""}`
-                          : item.tipo === "ENTRADA"
+                          : item.tipo === "AJUSTE_SALDO"
                             ? item.contaDestino
                               ? `${item.contaDestino.banco} – ${item.contaDestino.nome}`
                               : "—"
-                            : item.contaOrigem
-                              ? `${item.contaOrigem.banco} – ${item.contaOrigem.nome}`
-                              : "—";
+                            : item.tipo === "ENTRADA"
+                              ? item.contaDestino
+                                ? `${item.contaDestino.banco} – ${item.contaDestino.nome}`
+                                : "—"
+                              : item.contaOrigem
+                                ? `${item.contaOrigem.banco} – ${item.contaOrigem.nome}`
+                                : "—";
 
                       return (
                         <tr

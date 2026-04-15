@@ -10,6 +10,7 @@ export function Badge({ status, label, variant }) {
     ENTRADA: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
     SAIDA: "bg-red-500/20 text-red-300 border border-red-500/30",
     TRANSFERENCIA: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+    AJUSTE_SALDO: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
   };
 
   const statusLabel = {
@@ -20,6 +21,7 @@ export function Badge({ status, label, variant }) {
     ENTRADA: "Entrada",
     SAIDA: "Saída",
     TRANSFERENCIA: "Transferência",
+    AJUSTE_SALDO: "Ajuste de Saldo",
   };
 
   const variantMap = {

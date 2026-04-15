@@ -28,6 +28,7 @@ const TIPOS = [
   { value: "ENTRADA", label: "Entrada" },
   { value: "SAIDA", label: "Saida" },
   { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "AJUSTE_SALDO", label: "Ajuste de Saldo" },
 ];
 
 const STATUS = [
@@ -83,6 +84,12 @@ function resolveContaLabel(item) {
   if (item.tipo === "SAIDA") {
     return item.contaOrigem
       ? `${item.contaOrigem.banco} - ${item.contaOrigem.nome}`
+      : "-";
+  }
+
+  if (item.tipo === "AJUSTE_SALDO") {
+    return item.contaDestino
+      ? `${item.contaDestino.banco} - ${item.contaDestino.nome}`
       : "-";
   }
 
