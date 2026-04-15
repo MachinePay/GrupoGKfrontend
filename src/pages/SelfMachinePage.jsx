@@ -291,6 +291,7 @@ function SelfMachineFormModal({
                 value={form.chavePix}
                 onChange={(e) => setField("chavePix", e.target.value)}
                 placeholder="Email, CPF/CNPJ, Telefone ou Chave Aleatoria"
+                required
               />
             )}
             <Select
