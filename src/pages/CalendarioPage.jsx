@@ -885,6 +885,12 @@ export default function CalendarioPage() {
     deleteMutation.mutate(item.id);
   }
 
+  function handleStartEdit(item) {
+    setEditingItem(item);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const sortedItens = useMemo(
     () =>
       [...itens].sort(
@@ -1027,10 +1033,7 @@ export default function CalendarioPage() {
                 }
               }}
               onBaixa={setBaixaItem}
-              onEdit={(item) => {
-                setEditingItem(item);
-                setShowForm(true);
-              }}
+              onEdit={handleStartEdit}
             />
           )}
         </>
@@ -1185,10 +1188,7 @@ export default function CalendarioPage() {
                 </div>
                 <div className="col-span-1 text-center space-y-1">
                   <button
-                    onClick={() => {
-                      setEditingItem(item);
-                      setShowForm(true);
-                    }}
+                    onClick={() => handleStartEdit(item)}
                     className="block w-full text-xs text-slate-300 hover:text-white font-medium transition-colors"
                   >
                     <span className="inline-flex items-center gap-1">
