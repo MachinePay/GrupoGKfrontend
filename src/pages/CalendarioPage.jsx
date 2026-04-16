@@ -875,7 +875,12 @@ export default function CalendarioPage() {
   }
 
   function handleDelete(item) {
-    const ok = window.confirm(`Deseja excluir o compromisso "${item.titulo}"?`);
+    const isRealizado = item.status === "REALIZADO";
+    const ok = window.confirm(
+      isRealizado
+        ? `Deseja excluir o compromisso "${item.titulo}"? A movimentacao financeira vinculada tambem sera removida e o saldo sera estornado.`
+        : `Deseja excluir o compromisso "${item.titulo}"?`,
+    );
     if (!ok) return;
     deleteMutation.mutate(item.id);
   }
@@ -1179,36 +1184,34 @@ export default function CalendarioPage() {
                   <Badge status={item.status} />
                 </div>
                 <div className="col-span-1 text-center space-y-1">
+                  <button
+                    onClick={() => {
+                      setEditingItem(item);
+                      setShowForm(true);
+                    }}
+                    className="block w-full text-xs text-slate-300 hover:text-white font-medium transition-colors"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <Pencil size={11} /> Editar
+                    </span>
+                  </button>
                   {item.status !== "REALIZADO" && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingItem(item);
-                          setShowForm(true);
-                        }}
-                        className="block w-full text-xs text-slate-300 hover:text-white font-medium transition-colors"
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <Pencil size={11} /> Editar
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => setBaixaItem(item)}
-                        className="block w-full text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                      >
-                        Baixar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item)}
-                        className="block w-full text-xs text-red-400 hover:text-red-300 font-medium transition-colors"
-                        disabled={deleteMutation.isPending}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <Trash2 size={11} /> Excluir
-                        </span>
-                      </button>
-                    </>
+                    <button
+                      onClick={() => setBaixaItem(item)}
+                      className="block w-full text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                    >
+                      Baixar
+                    </button>
                   )}
+                  <button
+                    onClick={() => handleDelete(item)}
+                    className="block w-full text-xs text-red-400 hover:text-red-300 font-medium transition-colors"
+                    disabled={deleteMutation.isPending}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <Trash2 size={11} /> Excluir
+                    </span>
+                  </button>
                 </div>
               </div>
             ))}
