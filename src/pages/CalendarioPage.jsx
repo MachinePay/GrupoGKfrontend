@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
@@ -746,6 +746,7 @@ export default function CalendarioPage() {
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
   const [historicoPage, setHistoricoPage] = useState(1);
+  const formAnchorRef = useRef(null);
   const qc = useQueryClient();
 
   const { data: usuariosCriadores = [] } = useQuery({
@@ -888,7 +889,12 @@ export default function CalendarioPage() {
   function handleStartEdit(item) {
     setEditingItem(item);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    requestAnimationFrame(() => {
+      formAnchorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   }
 
   const sortedItens = useMemo(
@@ -937,17 +943,19 @@ export default function CalendarioPage() {
       </div>
 
       {showForm ? (
-        <AgendaForm
-          item={editingItem}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingItem(null);
-          }}
-          onSuccess={() => {
-            setShowForm(false);
-            setEditingItem(null);
-          }}
-        />
+        <div ref={formAnchorRef}>
+          <AgendaForm
+            item={editingItem}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingItem(null);
+            }}
+            onSuccess={() => {
+              setShowForm(false);
+              setEditingItem(null);
+            }}
+          />
+        </div>
       ) : (
         <div className="flex justify-end">
           <button
