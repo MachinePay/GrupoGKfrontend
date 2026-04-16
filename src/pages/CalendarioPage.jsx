@@ -574,6 +574,49 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
   );
 }
 
+function DeleteAgendaModal({ item, onConfirm, onCancel, isLoading }) {
+  const isRealizado = item?.status === "REALIZADO";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="glass card-shadow rounded-2xl p-6 w-full max-w-md space-y-4">
+        <div className="flex items-center gap-2">
+          <Trash2 size={18} className="text-red-400" />
+          <h3 className="font-semibold text-white">Excluir compromisso</h3>
+        </div>
+        <div className="text-sm text-slate-400 space-y-2">
+          <p>
+            Deseja excluir{" "}
+            <span className="text-white font-medium">{item?.titulo}</span>?
+          </p>
+          {isRealizado && (
+            <p className="text-amber-300">
+              A movimentacao financeira vinculada tambem sera removida e o saldo
+              sera estornado.
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            className="btn-ghost flex-1"
+            disabled={isLoading}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoading ? "Excluindo..." : "Confirmar exclusao"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const MONTH_NAMES = [
   "Janeiro",
   "Fevereiro",
@@ -740,6 +783,7 @@ export default function CalendarioPage() {
   const [empresaFiltro, setEmpresaFiltro] = useState("");
   const [criadorFiltro, setCriadorFiltro] = useState("");
   const [baixaItem, setBaixaItem] = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState("lista");
@@ -868,6 +912,8 @@ export default function CalendarioPage() {
     mutationFn: (id) => agendaApi.remover(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      setDeleteItem(null);
     },
   });
 
@@ -876,14 +922,12 @@ export default function CalendarioPage() {
   }
 
   function handleDelete(item) {
-    const isRealizado = item.status === "REALIZADO";
-    const ok = window.confirm(
-      isRealizado
-        ? `Deseja excluir o compromisso "${item.titulo}"? A movimentacao financeira vinculada tambem sera removida e o saldo sera estornado.`
-        : `Deseja excluir o compromisso "${item.titulo}"?`,
-    );
-    if (!ok) return;
-    deleteMutation.mutate(item.id);
+    setDeleteItem(item);
+  }
+
+  function confirmDelete() {
+    if (!deleteItem) return;
+    deleteMutation.mutate(deleteItem.id);
   }
 
   function handleStartEdit(item) {
@@ -1313,6 +1357,15 @@ export default function CalendarioPage() {
           onConfirm={handleBaixa}
           onCancel={() => setBaixaItem(null)}
           isLoading={baixaMutation.isPending}
+        />
+      )}
+
+      {deleteItem && (
+        <DeleteAgendaModal
+          item={deleteItem}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteItem(null)}
+          isLoading={deleteMutation.isPending}
         />
       )}
     </div>
