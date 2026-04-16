@@ -896,19 +896,11 @@ export default function CalendarioPage() {
       [...itens].sort(
         (left, right) => new Date(left.data) - new Date(right.data),
       ),
-        function handleStartEdit(item) {
-          setEditingItem(item);
-          setShowForm(true);
-          // Usar setTimeout para garantir que o estado foi atualizado antes de fazer scroll
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            // Fallback se smooth scroll não funcionar
-            const formElement = document.querySelector("form");
-            if (formElement) {
-              formElement.focus();
-            }
-          }, 0);
-        }
+    [itens],
+  );
+
+  const totaisPrevisto = sortedItens.filter((i) => i.status !== "REALIZADO");
+  const totalPagar = totaisPrevisto
     .filter((i) => i.tipo === "PAGAR")
     .reduce((s, i) => s + Number(i.valor), 0);
   const totalReceber = totaisPrevisto
