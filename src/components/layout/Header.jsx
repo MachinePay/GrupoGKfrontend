@@ -1,8 +1,10 @@
 import { Bell, ChevronDown } from "lucide-react";
 import { useConsolidado, useContasSaldo } from "../../hooks/useFinanceiro.js";
 import { formatCurrency } from "../../lib/utils.js";
+import { useTraducao } from "../../context/TraducaoContext.jsx";
 
 export default function Header({ onContaFilterChange, contaFiltro }) {
+  const { t } = useTraducao();
   const { data: consolidado, isLoading } = useConsolidado();
   const { data: contas = [] } = useContasSaldo();
 
@@ -15,8 +17,8 @@ export default function Header({ onContaFilterChange, contaFiltro }) {
     : Number(consolidado?.saldoLiquido || 0);
 
   const saldoLabel = contaSelecionada
-    ? `Saldo ${contaSelecionada.banco}`
-    : "Saldo Consolidado";
+    ? `${t("HEADER_SALDO_BANCO", "Saldo")} ${contaSelecionada.banco}`
+    : t("HEADER_SALDO_CONSOLIDADO", "Saldo Consolidado");
 
   return (
     <header
@@ -47,7 +49,9 @@ export default function Header({ onContaFilterChange, contaFiltro }) {
           className="appearance-none input-base pr-8 py-1.5 text-sm"
           style={{ width: 220 }}
         >
-          <option value="">Todos os Bancos</option>
+          <option value="">
+            {t("HEADER_TODOS_BANCOS", "Todos os Bancos")}
+          </option>
           {contas.map((conta) => (
             <option key={conta.id} value={conta.id}>
               {`${conta.banco} - ${conta.nome}`}

@@ -12,6 +12,7 @@ import { useConsolidado, useContasSaldo } from "../hooks/useFinanceiro.js";
 import { SaldoCard, MiniCard } from "../components/ui/SaldoCard.jsx";
 import { movimentacoesApi } from "../services/api.js";
 import { formatCurrency } from "../lib/utils.js";
+import { useTraducao } from "../context/TraducaoContext.jsx";
 
 const EmpresaChartSection = lazy(
   () => import("../components/dashboard/EmpresaChartSection.jsx"),
@@ -20,6 +21,7 @@ const EmpresaChartSection = lazy(
 export default function DashboardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { t } = useTraducao();
   const {
     data: consolidado,
     isLoading: loadConsolidado,
@@ -72,45 +74,45 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">
-            Dashboard Consolidado
+            {t("DASH_TITLE", "Dashboard Consolidado")}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Visão geral financeira do Grupo GK
+            {t("DASH_SUBTITLE", "Visão geral financeira do Grupo GK")}
           </p>
         </div>
         <button
           onClick={handleRefresh}
           className="btn-ghost flex items-center gap-1.5 text-xs"
         >
-          <RefreshCw size={13} /> Atualizar
+          <RefreshCw size={13} /> {t("DASH_REFRESH", "Atualizar")}
         </button>
       </div>
 
       {/* Cards principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <SaldoCard
-          title="Total Entradas"
+          title={t("DASH_TOTAL_ENTRADAS", "Total Entradas")}
           value={formatCurrency(consolidado?.totalEntradas)}
           icon={TrendingUp}
           color="green"
           loading={loadConsolidado}
         />
         <SaldoCard
-          title="Total Saídas"
+          title={t("DASH_TOTAL_SAIDAS", "Total Saídas")}
           value={formatCurrency(consolidado?.totalSaidas)}
           icon={TrendingDown}
           color="red"
           loading={loadConsolidado}
         />
         <SaldoCard
-          title="Saldo Geral"
+          title={t("DASH_SALDO_LIQUIDO", "Saldo Geral")}
           value={formatCurrency(saldoGeral)}
           icon={Wallet}
           color={saldoGeral >= 0 ? "blue" : "red"}
           loading={loadContas}
         />
         <SaldoCard
-          title="Contas Ativas"
+          title={t("DASH_CONTAS_ATIVAS", "Contas Ativas")}
           value={contas.length}
           icon={Building2}
           color="purple"
@@ -121,7 +123,7 @@ export default function DashboardPage() {
       {/* Saldo por banco */}
       <div>
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          Saldo por Conta Bancária
+          {t("BANCOS_TITLE", "Saldo por Conta Bancária")}
         </h2>
         {loadContas ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -161,7 +163,7 @@ export default function DashboardPage() {
       <div className="glass card-shadow rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white">
-            Lançamentos de Hoje
+            {t("DASH_LANCAMENTOS_HOJE", "Lançamentos de Hoje")}
           </h2>
           <span className="text-xs text-slate-400">
             {movsHoje.length} lançamento(s)
@@ -180,7 +182,10 @@ export default function DashboardPage() {
           </div>
         ) : movsHoje.length === 0 ? (
           <div className="py-10 text-center text-slate-500 text-sm">
-            Nenhum lançamento realizado hoje.
+            {t(
+              "DASH_SEM_LANCAMENTOS_HOJE",
+              "Nenhum lançamento realizado hoje.",
+            )}
           </div>
         ) : (
           <>
@@ -226,7 +231,9 @@ export default function DashboardPage() {
             {/* Saldo final do dia */}
             <div className="px-5 py-4 border-t border-white/5 bg-white/3">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-400">Saldo do dia:</p>
+                <p className="text-sm text-slate-400">
+                  {t("DASH_SALDO_HOJE", "Saldo do dia:")}:
+                </p>
                 <p
                   className={`text-lg font-bold tabular-nums ${
                     statsHoje.saldoHoje >= 0
@@ -247,10 +254,10 @@ export default function DashboardPage() {
       <div className="glass card-shadow rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-white">
-            Faturamento por Empresa
+            {t("DASH_FAT_EMPRESA", "Faturamento por Empresa")}
           </h2>
           <span className="text-xs text-slate-500">
-            Entradas vs Saídas (REALIZADO)
+            {t("DASH_FAT_EMPRESA_SUB", "Entradas vs Saídas (REALIZADO)")}
           </span>
         </div>
         <Suspense
