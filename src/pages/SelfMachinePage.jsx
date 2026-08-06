@@ -60,6 +60,10 @@ const BASE_FORM = {
   tipoRemessa: "RECORRENTE",
   valorDesenvolvimento: "",
   valorMensalidade: "",
+  custoServidor: "",
+  custoBancoDados: "",
+  custoFrontend: "",
+  custoOutros: "",
   dataInicioMensalidade: "",
   condicoesPagamento: "Avista Integral Pos entrega",
   meioPagamento: "PIX",
@@ -77,6 +81,12 @@ function toInputDate(value) {
   return new Date(value).toISOString().slice(0, 10);
 }
 
+function toNullableNumber(value) {
+  return value === "" || value === null || value === undefined
+    ? null
+    : Number(value);
+}
+
 function buildPayload(form) {
   return {
     ...form,
@@ -85,6 +95,10 @@ function buildPayload(form) {
         ? null
         : Number(form.valorDesenvolvimento),
     valorMensalidade: Number(form.valorMensalidade),
+    custoServidor: toNullableNumber(form.custoServidor),
+    custoBancoDados: toNullableNumber(form.custoBancoDados),
+    custoFrontend: toNullableNumber(form.custoFrontend),
+    custoOutros: toNullableNumber(form.custoOutros),
   };
 }
 
@@ -322,6 +336,46 @@ function SelfMachineFormModal({
             />
           </div>
 
+          <div className="space-y-3">
+            <p className="text-xs font-semibold tracking-[0.16em] uppercase text-[#a4a4a4]">
+              Custos do Sistema (opcional)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <Input
+                label="Servidor (Backend)"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.custoServidor}
+                onChange={(e) => setField("custoServidor", e.target.value)}
+              />
+              <Input
+                label="Banco de Dados"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.custoBancoDados}
+                onChange={(e) => setField("custoBancoDados", e.target.value)}
+              />
+              <Input
+                label="Frontend (Vercel)"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.custoFrontend}
+                onChange={(e) => setField("custoFrontend", e.target.value)}
+              />
+              <Input
+                label="Outros"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.custoOutros}
+                onChange={(e) => setField("custoOutros", e.target.value)}
+              />
+            </div>
+          </div>
+
           <LogoUpload
             value={form.logoParceiraUrl}
             onChange={(value) => setField("logoParceiraUrl", value)}
@@ -447,6 +501,52 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
             {data.descricao || "Sem descricao."}
           </div>
 
+          {(data.custoServidor ||
+            data.custoBancoDados ||
+            data.custoFrontend ||
+            data.custoOutros) && (
+            <div className="rounded-xl border border-[#2f2f2f] bg-[#0f0f0f] p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#9b9b9b] mb-3">
+                Custos do Sistema
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <p>
+                  <span className="text-[#999] block text-xs">Servidor</span>
+                  {formatCurrency(data.custoServidor)}
+                </p>
+                <p>
+                  <span className="text-[#999] block text-xs">
+                    Banco de Dados
+                  </span>
+                  {formatCurrency(data.custoBancoDados)}
+                </p>
+                <p>
+                  <span className="text-[#999] block text-xs">Frontend</span>
+                  {formatCurrency(data.custoFrontend)}
+                </p>
+                <p>
+                  <span className="text-[#999] block text-xs">Outros</span>
+                  {formatCurrency(data.custoOutros)}
+                </p>
+              </div>
+              <div className="mt-3 pt-3 border-t border-[#242424] flex items-center justify-between text-sm">
+                <span className="text-[#999]">Custo Total / Margem</span>
+                <span>
+                  <span className="text-rose-300">
+                    {formatCurrency(data.custoTotalSistema)}
+                  </span>
+                  <span className="text-[#666]"> / </span>
+                  <span className="text-emerald-300">
+                    {formatCurrency(
+                      Number(data.valorMensalidade || 0) -
+                        Number(data.custoTotalSistema || 0),
+                    )}
+                  </span>
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -554,9 +654,21 @@ function RelatorioModal({ isOpen, onClose }) {
                     color="text-emerald-300"
                   />
                   <KpiCard
-                    label="Despesas"
+                    label="Despesas (Lançamentos)"
                     value={formatCurrency(rel.financeiro.despesasTotal)}
                     sub="Saídas registradas"
+                    color="text-rose-300"
+                  />
+                  <KpiCard
+                    label="Custos de Sistema"
+                    value={formatCurrency(rel.financeiro.custosSistema)}
+                    sub="Servidor, banco, frontend, outros"
+                    color="text-rose-300"
+                  />
+                  <KpiCard
+                    label="Total de Despesas"
+                    value={formatCurrency(rel.financeiro.despesasGerais)}
+                    sub="Lançamentos + custos de sistema"
                     color="text-rose-300"
                   />
                   <KpiCard
@@ -570,11 +682,90 @@ function RelatorioModal({ isOpen, onClose }) {
                     }
                   />
                   <KpiCard
+                    label="Lucro Operacional"
+                    value={formatCurrency(rel.financeiro.lucroOperacional)}
+                    sub={`Margem ${rel.financeiro.margemOperacional.toFixed(1)}% (com custos de sistema)`}
+                    color={
+                      rel.financeiro.lucroOperacional >= 0
+                        ? "text-emerald-300"
+                        : "text-rose-300"
+                    }
+                  />
+                  <KpiCard
                     label="Receita (30 dias)"
                     value={formatCurrency(rel.resumo.receita30Dias)}
                     sub="Últimos 30 dias"
                     color="text-sky-300"
                   />
+                </div>
+              </section>
+
+              {/* Cobrancas de mensalidade */}
+              <section>
+                <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                  Cobrança de Mensalidades
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-3">
+                  <KpiCard
+                    label="Em Atraso"
+                    value={formatCurrency(rel.resumo.totalCobrancasAtrasadas)}
+                    sub={`${rel.cobrancas.filter((c) => c.status === "ATRASADO").length} cliente(s)`}
+                    color="text-rose-300"
+                  />
+                  <KpiCard
+                    label="A Vencer"
+                    value={formatCurrency(rel.resumo.totalCobrancasAVencer)}
+                    sub={`${rel.cobrancas.filter((c) => c.status === "A_VENCER").length} cliente(s)`}
+                    color="text-[#f6c37f]"
+                  />
+                </div>
+                <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-4">
+                  {rel.cobrancas.length === 0 ? (
+                    <p className="text-sm text-[#666] text-center py-6">
+                      Nenhum sistema ativo para cobrança.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {rel.cobrancas.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between gap-3 py-2 border-b border-[#1e1e1e] last:border-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {c.nomeCliente}
+                            </p>
+                            <p className="text-xs text-[#666] truncate">
+                              {c.nomeSistema} · Vencimento{" "}
+                              {formatDate(c.vencimento)}
+                            </p>
+                          </div>
+                          <div className="text-right whitespace-nowrap">
+                            <p className="text-sm font-semibold text-[#f4f4f4]">
+                              {formatCurrency(c.valorMensalidade)}
+                            </p>
+                            {c.status === "ATRASADO" && (
+                              <p className="text-xs text-rose-300">
+                                {c.dias} dia{c.dias !== 1 ? "s" : ""} em atraso
+                              </p>
+                            )}
+                            {c.status === "A_VENCER" && (
+                              <p className="text-xs text-[#f6c37f]">
+                                {c.dias === 0
+                                  ? "Vence hoje"
+                                  : `Cobrar em ${c.dias} dia${c.dias !== 1 ? "s" : ""}`}
+                              </p>
+                            )}
+                            {c.status === "PAGO" && (
+                              <p className="text-xs text-emerald-300">
+                                Pago este mês
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -763,6 +954,39 @@ function RelatorioModal({ isOpen, onClose }) {
                 </section>
               </div>
 
+              {/* Custos por sistema */}
+              <section>
+                <h3 className="text-xs uppercase tracking-[0.18em] text-[#d0862b] mb-3">
+                  Custos de Infraestrutura por Sistema
+                </h3>
+                <div className="rounded-2xl border border-[#2a2a2a] bg-[#0e0e0e] p-4 space-y-2">
+                  {rel.custosPorSistema.length === 0 ? (
+                    <p className="text-sm text-[#666] py-4 text-center">
+                      Nenhum custo de sistema cadastrado.
+                    </p>
+                  ) : (
+                    rel.custosPorSistema.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-2 py-1 border-b border-[#1e1e1e] last:border-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {c.nomeCliente}
+                          </p>
+                          <p className="text-xs text-[#666] truncate">
+                            {c.nomeSistema}
+                          </p>
+                        </div>
+                        <span className="text-rose-300 text-sm font-semibold whitespace-nowrap">
+                          {formatCurrency(c.total)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
               {/* Crescimento e Planos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Crescimento */}
@@ -930,6 +1154,23 @@ export default function SelfMachinePage() {
           ? ""
           : String(contrato.valorDesenvolvimento),
       valorMensalidade: String(contrato.valorMensalidade ?? ""),
+      custoServidor:
+        contrato.custoServidor === null || contrato.custoServidor === undefined
+          ? ""
+          : String(contrato.custoServidor),
+      custoBancoDados:
+        contrato.custoBancoDados === null ||
+        contrato.custoBancoDados === undefined
+          ? ""
+          : String(contrato.custoBancoDados),
+      custoFrontend:
+        contrato.custoFrontend === null || contrato.custoFrontend === undefined
+          ? ""
+          : String(contrato.custoFrontend),
+      custoOutros:
+        contrato.custoOutros === null || contrato.custoOutros === undefined
+          ? ""
+          : String(contrato.custoOutros),
     });
     setShowForm(true);
   }
