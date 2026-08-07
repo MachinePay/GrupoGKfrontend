@@ -233,6 +233,33 @@ html[data-theme="dark"] {
     color: #2563eb !important;
   }
 
+  html[data-theme="light"] .text-blue-200 {
+    color: #1d4ed8 !important;
+  }
+
+  html[data-theme="light"] .text-red-200,
+  html[data-theme="light"] .text-red-300 {
+    color: #b91c1c !important;
+  }
+
+  html[data-theme="light"] .text-amber-100,
+  html[data-theme="light"] .text-amber-200,
+  html[data-theme="light"] .text-amber-300 {
+    color: #b45309 !important;
+  }
+
+  html[data-theme="light"] .text-orange-300 {
+    color: #c2410c !important;
+  }
+
+  html[data-theme="light"] .text-emerald-300 {
+    color: #047857 !important;
+  }
+
+  html[data-theme="light"] .text-violet-300 {
+    color: #6d28d9 !important;
+  }
+
   html[data-theme="light"] .placeholder-slate-500::placeholder {
     color: #94a3b8 !important;
   }
