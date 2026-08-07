@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeDollarSign,
+  CheckCircle,
   Eye,
   ExternalLink,
   FileSpreadsheet,
@@ -28,7 +29,8 @@ import {
 } from "recharts";
 import { Input, Select } from "../components/ui/FormField.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
-import { selfMachineApi } from "../services/api.js";
+import { useEmpresas, useContas } from "../hooks/useFinanceiro.js";
+import { selfMachineApi, movimentacoesApi } from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
 import {
   generatePedidoPagamentoPdf,
@@ -1169,17 +1171,113 @@ function RelatorioModal({ isOpen, onClose }) {
   );
 }
 
+function DarBaixaModal({ contrato, onClose, onSubmit, isLoading }) {
+  const { data: contas = [] } = useContas();
+  const [contaDestinoId, setContaDestinoId] = useState("");
+  const [valor, setValor] = useState("");
+  const [data, setData] = useState("");
+
+  useEffect(() => {
+    if (contrato) {
+      setValor(String(contrato.valorMensalidade ?? ""));
+      setData(new Date().toISOString().slice(0, 10));
+      setContaDestinoId("");
+    }
+  }, [contrato]);
+
+  if (!contrato) return null;
+
+  function submit(event) {
+    event.preventDefault();
+    onSubmit({ contaDestinoId, valor, data });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-[#2f2f2f] bg-white dark:bg-[#121212] text-slate-900 dark:text-[#f3f3f3] shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
+          <h2 className="text-lg font-semibold">Dar Baixa - Mensalidade</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm px-3 py-1 rounded-lg border border-slate-300 dark:border-[#3c3c3c] text-slate-500 dark:text-[#9f9f9f] hover:text-slate-900 dark:hover:text-white"
+          >
+            Fechar
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="p-6 space-y-4">
+          <p className="text-sm text-slate-500 dark:text-[#a5a5a5]">
+            {contrato.nomeCliente} · {contrato.nomeSistema}
+          </p>
+
+          <Input
+            label="Valor Recebido"
+            type="number"
+            min="0"
+            step="0.01"
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Data do Pagamento"
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+            required
+          />
+
+          <Select
+            label="Conta de Destino"
+            value={contaDestinoId}
+            onChange={(e) => setContaDestinoId(e.target.value)}
+            placeholder="Selecione a conta..."
+            options={contas.map((c) => ({
+              value: c.id,
+              label: `${c.banco} - ${c.nome}`,
+            }))}
+            required
+          />
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={isLoading || !contaDestinoId}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <LoaderCircle size={16} className="animate-spin" />
+              ) : (
+                <CheckCircle size={16} />
+              )}
+              Confirmar Baixa
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function SelfMachinePage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [detalhes, setDetalhes] = useState(null);
   const [showRelatorio, setShowRelatorio] = useState(false);
+  const [baixaContrato, setBaixaContrato] = useState(null);
 
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["selfmachine", "saas"],
     queryFn: () => selfMachineApi.listar().then((res) => res.data),
   });
+
+  const { data: empresas = [] } = useEmpresas();
+  const empresaSelfMachine = empresas.find(
+    (e) => String(e.nome || "").trim().toLowerCase() === "selfmachine",
+  );
 
   const saveMutation = useMutation({
     mutationFn: (payload) => {
@@ -1208,6 +1306,27 @@ export default function SelfMachinePage() {
       queryClient.invalidateQueries({ queryKey: ["selfmachine", "saas"] });
       generatePedidoPagamentoPdf(res.data);
       setDetalhes(res.data);
+    },
+  });
+
+  const baixaMutation = useMutation({
+    mutationFn: ({ contaDestinoId, valor, data }) =>
+      movimentacoesApi.criar({
+        empresaId: empresaSelfMachine?.id,
+        tipo: "ENTRADA",
+        status: "REALIZADO",
+        categoria: "SISTEMA",
+        valor: Number(valor),
+        data,
+        contaDestinoId: Number(contaDestinoId),
+        saasClienteId: baixaContrato.id,
+        saasLancamentoTipo: "MENSALIDADE",
+        referencia: `Mensalidade - ${baixaContrato.nomeSistema}`,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["selfmachine", "saas"] });
+      queryClient.invalidateQueries({ queryKey: ["movimentacoes"] });
+      setBaixaContrato(null);
     },
   });
 
@@ -1408,6 +1527,26 @@ export default function SelfMachinePage() {
                     Ult. pagamento:{" "}
                     {formatDate(contrato.ultimaMensalidadePagaEm)}
                   </p>
+                  {(contrato.adminEmail || contrato.adminSenha) && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-[#2a2a2a] space-y-0.5">
+                      {contrato.adminEmail && (
+                        <p className="text-xs text-slate-500 dark:text-[#a0a0a0] truncate">
+                          <span className="text-slate-400 dark:text-[#777]">
+                            Login:
+                          </span>{" "}
+                          {contrato.adminEmail}
+                        </p>
+                      )}
+                      {contrato.adminSenha && (
+                        <p className="text-xs text-slate-500 dark:text-[#a0a0a0] truncate">
+                          <span className="text-slate-400 dark:text-[#777]">
+                            Senha:
+                          </span>{" "}
+                          {contrato.adminSenha}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -1449,6 +1588,15 @@ export default function SelfMachinePage() {
                       <ExternalLink size={13} /> Acessar Site
                     </a>
                   )}
+                  {contrato.statusMensalidade !== "PAGO" && (
+                    <button
+                      type="button"
+                      onClick={() => setBaixaContrato(contrato)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 dark:border-emerald-800/50 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                    >
+                      <CheckCircle size={13} /> Dar Baixa
+                    </button>
+                  )}
                 </div>
               </article>
             );
@@ -1478,13 +1626,22 @@ export default function SelfMachinePage() {
         onClose={() => setShowRelatorio(false)}
       />
 
+      <DarBaixaModal
+        contrato={baixaContrato}
+        onClose={() => setBaixaContrato(null)}
+        onSubmit={(payload) => baixaMutation.mutate(payload)}
+        isLoading={baixaMutation.isPending}
+      />
+
       {(saveMutation.isError ||
         deleteMutation.isError ||
-        gerarPedidoMutation.isError) && (
+        gerarPedidoMutation.isError ||
+        baixaMutation.isError) && (
         <p className="mt-4 text-sm text-rose-700 dark:text-rose-300">
           {saveMutation.error?.response?.data?.message ||
             deleteMutation.error?.response?.data?.message ||
             gerarPedidoMutation.error?.response?.data?.message ||
+            baixaMutation.error?.response?.data?.message ||
             "Erro ao processar operacao no modulo SelfMachine."}
         </p>
       )}
