@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(html[data-theme="dark"], html[data-theme="dark"] *));
+
 @theme {
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
