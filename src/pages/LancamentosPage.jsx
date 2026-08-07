@@ -366,7 +366,7 @@ export default function LancamentosPage() {
                   items.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-t border-white/5 text-slate-200"
+                      className="border-t border-slate-200 dark:border-white/5 text-slate-800 dark:text-slate-200"
                     >
                       <td className="px-3 py-2">{formatDate(item.data)}</td>
                       <td className="px-3 py-2">{item.empresa?.nome ?? "-"}</td>

@@ -329,13 +329,13 @@ function ContaDetailModal({ conta, onClose, onBaixa, onEdit, onDelete }) {
           {conta.descricao && (
             <div>
               <p className="text-xs text-slate-500 mb-1">Descrição</p>
-              <p className="text-sm text-slate-300">{conta.descricao}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{conta.descricao}</p>
             </div>
           )}
           {conta.origem && (
             <div>
               <p className="text-xs text-slate-500 mb-1">Origem</p>
-              <p className="text-sm text-slate-300">{conta.origem}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{conta.origem}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
@@ -459,7 +459,7 @@ function ContaRow({ conta, onViewDetails, isExpanded, onToggle }) {
             {conta.descricao && (
               <div className="col-span-2">
                 <p className="text-xs text-slate-500 mb-1">Descrição</p>
-                <p className="text-sm text-slate-300">{conta.descricao}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{conta.descricao}</p>
               </div>
             )}
             <div>

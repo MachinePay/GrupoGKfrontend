@@ -13,8 +13,8 @@ import { formatCurrency } from "../../../lib/utils.js";
 export default function ProjectRankingChart({ data, isLoading }) {
   if (isLoading || !data || data.length === 0) {
     return (
-      <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+      <div className="glass rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-4">
           Ranking de Projetos (MaisQuiosque)
         </h3>
         <div className="h-80 flex items-center justify-center text-slate-500">
@@ -25,7 +25,7 @@ export default function ProjectRankingChart({ data, isLoading }) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+    <div className="glass rounded-lg p-4">
       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
         Ranking de Projetos (Lucro Líquido)
       </h3>

@@ -203,7 +203,7 @@ export default function RelatoriosPage() {
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-400">{item.empresa}</span>
-                        <span className="text-slate-300">
+                        <span className="text-slate-700 dark:text-slate-300">
                           {formatCurrency(item.saldo)} · {item.percentual}%
                         </span>
                       </div>

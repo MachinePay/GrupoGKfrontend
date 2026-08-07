@@ -343,7 +343,7 @@ export default function FluxoSaldoPage() {
                         </span>
                       </div>
                       <div className="border-t border-white/10 pt-1.5 flex justify-between items-center">
-                        <span className="text-xs text-slate-300 font-medium">
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                           Líquido
                         </span>
                         <span

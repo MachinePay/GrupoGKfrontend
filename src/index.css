@@ -211,6 +211,14 @@ html[data-theme="dark"] {
     color: #475569 !important;
   }
 
+  html[data-theme="light"] .text-slate-300 {
+    color: #334155 !important;
+  }
+
+  html[data-theme="light"] .text-slate-200 {
+    color: #1e293b !important;
+  }
+
   html[data-theme="light"] .text-gray-600 {
     color: #4b5563 !important;
   }
@@ -224,7 +232,7 @@ html[data-theme="dark"] {
   }
 
   html[data-theme="light"] .placeholder-slate-500::placeholder {
-    color: #cbd5e1 !important;
+    color: #94a3b8 !important;
   }
 
   /* Ensure labels are visible in light theme */

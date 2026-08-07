@@ -101,11 +101,11 @@ export default function AnalyticsPage() {
       />
 
       {/* Informações Adicionais */}
-      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
+      <div className="glass rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-3">
           💡 Dicas de Otimização
         </h3>
-        <ul className="space-y-2 text-sm text-slate-400">
+        <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
           <li>
             🎯 <strong>Gráfico de Pareto (20/80):</strong> Identifique os 20% de
             custos que representam 80% dos gastos - geralmente aqui está a

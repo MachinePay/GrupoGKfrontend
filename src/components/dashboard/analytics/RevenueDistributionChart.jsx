@@ -13,8 +13,8 @@ const COLORS = [
 export default function RevenueDistributionChart({ data, isLoading }) {
   if (isLoading || !data || data.length === 0) {
     return (
-      <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+      <div className="glass rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-4">
           Distribuição de Receitas por Empresa
         </h3>
         <div className="h-80 flex items-center justify-center text-slate-500">
@@ -25,7 +25,7 @@ export default function RevenueDistributionChart({ data, isLoading }) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+    <div className="glass rounded-lg p-4">
       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
         Distribuição de Receitas por Empresa
       </h3>
@@ -79,7 +79,7 @@ export default function RevenueDistributionChart({ data, isLoading }) {
               <span className="text-slate-400">{item.empresa}</span>
             </div>
             <div className="text-right">
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300">
                 {formatCurrency(item.valor)}
               </span>
               <span className="text-slate-500 ml-2">({item.percentual}%)</span>

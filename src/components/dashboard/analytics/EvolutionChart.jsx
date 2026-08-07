@@ -22,8 +22,8 @@ export default function EvolutionChart({ data, isLoading }) {
   const chartData = data || [];
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-      <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+    <div className="glass rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-4">
         Evolução: Receitas vs Despesas
       </h3>
       <ResponsiveContainer width="100%" height={350}>

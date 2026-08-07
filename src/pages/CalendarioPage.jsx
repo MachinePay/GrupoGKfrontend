@@ -972,13 +972,13 @@ export default function CalendarioPage() {
           <div className="flex items-center gap-1 rounded-xl glass p-1 shrink-0">
             <button
               onClick={() => setViewMode("lista")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "lista" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "lista" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
             >
               <List size={13} /> Lista
             </button>
             <button
               onClick={() => setViewMode("calendario")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "calendario" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "calendario" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
             >
               <LayoutGrid size={13} /> Calendário
             </button>
@@ -1150,7 +1150,7 @@ export default function CalendarioPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     statusFiltro === s.value
                       ? "bg-blue-600 text-white"
-                      : "glass text-slate-400 hover:text-white"
+                      : "glass text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   {s.label}
@@ -1165,7 +1165,7 @@ export default function CalendarioPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     tipoFiltro === s.value
                       ? "bg-slate-100 text-slate-900"
-                      : "glass text-slate-400 hover:text-white"
+                      : "glass text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   {s.label}
@@ -1201,7 +1201,7 @@ export default function CalendarioPage() {
                 key={item.id}
                 className="grid grid-cols-12 gap-2 px-5 py-3.5 border-b border-white/5 hover:bg-white/2 transition-colors items-center"
               >
-                <div className="col-span-2 text-sm text-slate-300">
+                <div className="col-span-2 text-sm text-slate-700 dark:text-slate-300">
                   {formatDate(item.data)}
                 </div>
                 <div className="col-span-3 text-sm text-white font-medium">
@@ -1241,7 +1241,7 @@ export default function CalendarioPage() {
                 <div className="col-span-1 text-center space-y-1">
                   <button
                     onClick={() => handleStartEdit(item)}
-                    className="block w-full text-xs text-slate-300 hover:text-white font-medium transition-colors"
+                    className="block w-full text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
                   >
                     <span className="inline-flex items-center gap-1">
                       <Pencil size={11} /> Editar

@@ -1103,7 +1103,7 @@ function FornecedoresTab() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => toggleMutation.mutate(f.id)}
-                    className="text-slate-400 hover:text-white transition-colors"
+                    className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                     disabled={toggleMutation.isPending}
                   >
                     {f.ativo ? (
