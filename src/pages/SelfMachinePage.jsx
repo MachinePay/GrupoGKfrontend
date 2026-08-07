@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeDollarSign,
   Eye,
+  ExternalLink,
   FileSpreadsheet,
   Pencil,
   Plus,
@@ -61,9 +62,10 @@ const BASE_FORM = {
   logoParceiraUrl: "",
   logoSelfMachineUrl: "",
   vendedor: "",
-  numeroPc: "",
   dataEmissao: "",
-  tipoRemessa: "RECORRENTE",
+  linkSistema: "",
+  adminEmail: "",
+  adminSenha: "",
   valorDesenvolvimento: "",
   valorMensalidade: "",
   custoServidor: "",
@@ -239,26 +241,29 @@ function SelfMachineFormModal({
               required
             />
             <Input
-              label="Numero do PC"
-              value={form.numeroPc}
-              onChange={(e) => setField("numeroPc", e.target.value)}
-              required
-            />
-            <Input
               label="Data de Emissao"
               type="date"
               value={form.dataEmissao}
               onChange={(e) => setField("dataEmissao", e.target.value)}
               required
             />
-            <Select
-              label="Tipo de Remessa"
-              value={form.tipoRemessa}
-              onChange={(e) => setField("tipoRemessa", e.target.value)}
-              options={[
-                { value: "UNICA", label: "Unica" },
-                { value: "RECORRENTE", label: "Recorrente" },
-              ]}
+            <Input
+              label="Link do Sistema"
+              value={form.linkSistema}
+              onChange={(e) => setField("linkSistema", e.target.value)}
+              placeholder="https://sistema-do-cliente.com.br"
+            />
+            <Input
+              label="Email do Admin"
+              type="email"
+              value={form.adminEmail}
+              onChange={(e) => setField("adminEmail", e.target.value)}
+              placeholder="admin@cliente.com"
+            />
+            <Input
+              label="Senha do Admin"
+              value={form.adminSenha}
+              onChange={(e) => setField("adminSenha", e.target.value)}
             />
             <Input
               label="Valor do Desenvolvimento (Setup)"
@@ -476,10 +481,6 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
               {data.nomeSistema}
             </p>
             <p>
-              <span className="text-slate-500 dark:text-[#999]">PC:</span>{" "}
-              {data.numeroPc}
-            </p>
-            <p>
               <span className="text-slate-500 dark:text-[#999]">
                 Vendedor:
               </span>{" "}
@@ -489,12 +490,37 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
               <span className="text-slate-500 dark:text-[#999]">Plano:</span>{" "}
               {data.tipoPlano}
             </p>
-            <p>
-              <span className="text-slate-500 dark:text-[#999]">
-                Remessa:
-              </span>{" "}
-              {data.tipoRemessa}
-            </p>
+            {data.linkSistema && (
+              <p className="sm:col-span-2">
+                <span className="text-slate-500 dark:text-[#999]">
+                  Link do Sistema:
+                </span>{" "}
+                <a
+                  href={data.linkSistema}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-700 dark:text-blue-300 hover:underline break-all"
+                >
+                  {data.linkSistema}
+                </a>
+              </p>
+            )}
+            {data.adminEmail && (
+              <p>
+                <span className="text-slate-500 dark:text-[#999]">
+                  Email do Admin:
+                </span>{" "}
+                {data.adminEmail}
+              </p>
+            )}
+            {data.adminSenha && (
+              <p>
+                <span className="text-slate-500 dark:text-[#999]">
+                  Senha do Admin:
+                </span>{" "}
+                {data.adminSenha}
+              </p>
+            )}
             <p>
               <span className="text-slate-500 dark:text-[#999]">
                 Mensalidade:
@@ -1210,6 +1236,9 @@ export default function SelfMachinePage() {
       ...contrato,
       dataEmissao: toInputDate(contrato.dataEmissao),
       dataInicioMensalidade: toInputDate(contrato.dataInicioMensalidade),
+      linkSistema: contrato.linkSistema || "",
+      adminEmail: contrato.adminEmail || "",
+      adminSenha: contrato.adminSenha || "",
       valorDesenvolvimento:
         contrato.valorDesenvolvimento === null
           ? ""
@@ -1410,6 +1439,16 @@ export default function SelfMachinePage() {
                   >
                     <BadgeDollarSign size={13} /> Pedido
                   </button>
+                  {contrato.linkSistema && (
+                    <a
+                      href={contrato.linkSistema}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#d0862b]/40 px-3 py-1.5 text-xs text-amber-700 dark:text-[#f6c37f] hover:bg-[#d0862b]/10"
+                    >
+                      <ExternalLink size={13} /> Acessar Site
+                    </a>
+                  )}
                 </div>
               </article>
             );

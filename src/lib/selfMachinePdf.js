@@ -140,12 +140,11 @@ export async function generatePedidoPagamentoPdf(contrato) {
   doc.text("Dados do Pedido", 12, 58);
 
   const tableData = [
-    ["Numero do PC", contrato.numeroPc || "-"],
     ["Data de Emissao", formatDate(contrato.dataEmissao)],
     ["Cliente", contrato.nomeCliente || "-"],
     ["Sistema", contrato.nomeSistema || "-"],
+    ["Link do Sistema", contrato.linkSistema || "-"],
     ["Vendedor", contrato.vendedor || "-"],
-    ["Tipo de Remessa", contrato.tipoRemessa || "-"],
     ["Plano", contrato.tipoPlano || "-"],
     [
       "Desenvolvimento (Setup)",
@@ -227,7 +226,6 @@ export async function generatePropostaSistemaPdf(contrato) {
   );
 
   const propostaTableData = [
-    ["Tipo de Remessa", contrato.tipoRemessa || "-"],
     [
       "Data de Inicio da Mensalidade",
       formatDate(contrato.dataInicioMensalidade),
