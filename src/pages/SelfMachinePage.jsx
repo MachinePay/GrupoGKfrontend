@@ -15,6 +15,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Search,
   X,
 } from "lucide-react";
 import {
@@ -1300,6 +1301,7 @@ export default function SelfMachinePage() {
   const [detalhes, setDetalhes] = useState(null);
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [baixaContrato, setBaixaContrato] = useState(null);
+  const [busca, setBusca] = useState("");
 
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["selfmachine", "saas"],
@@ -1376,6 +1378,17 @@ export default function SelfMachinePage() {
 
     return { total, ativos, atrasados, mrr };
   }, [contratos]);
+
+  const contratosFiltrados = useMemo(() => {
+    const normalizar = (texto) =>
+      String(texto || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase();
+    const termo = normalizar(busca.trim());
+    if (!termo) return contratos;
+    return contratos.filter((c) => normalizar(c.nomeSistema).includes(termo));
+  }, [contratos, busca]);
 
   function openCreate() {
     setEditing(null);
@@ -1490,6 +1503,32 @@ export default function SelfMachinePage() {
         </div>
       </div>
 
+      {!isLoading && contratos.length > 0 && (
+        <div className="mt-6 relative max-w-md">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#777]"
+          />
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Pesquisar por nome do sistema..."
+            className="w-full rounded-xl border border-slate-200 dark:border-[#2f2f2f] bg-white dark:bg-[#151515] py-2.5 pl-9 pr-9 text-sm text-slate-800 dark:text-[#e5e5e5] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:border-[#d0862b]"
+          />
+          {busca && (
+            <button
+              type="button"
+              onClick={() => setBusca("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-[#777] dark:hover:text-[#ccc]"
+              aria-label="Limpar pesquisa"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      )}
+
       {isLoading && (
         <div className="mt-8 text-sm text-slate-500 dark:text-[#9c9c9c]">
           Carregando contratos...
@@ -1502,9 +1541,15 @@ export default function SelfMachinePage() {
         </div>
       )}
 
-      {!isLoading && contratos.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {contratos.map((contrato) => {
+      {!isLoading && contratos.length > 0 && contratosFiltrados.length === 0 && (
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 dark:border-[#3b3b3b] bg-white dark:bg-[#111] p-8 text-center text-sm text-slate-500 dark:text-[#999]">
+          Nenhum sistema encontrado para "{busca}".
+        </div>
+      )}
+
+      {!isLoading && contratosFiltrados.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {contratosFiltrados.map((contrato) => {
             const status = getStatusVisual(contrato);
             return (
               <article
