@@ -30,7 +30,11 @@ import {
 import { Input, Select } from "../components/ui/FormField.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas, useContas } from "../hooks/useFinanceiro.js";
-import { selfMachineApi, movimentacoesApi } from "../services/api.js";
+import {
+  selfMachineApi,
+  movimentacoesApi,
+  cotacoesApi,
+} from "../services/api.js";
 import { formatCurrency, formatDate } from "../lib/utils.js";
 import {
   generatePedidoPagamentoPdf,
@@ -351,11 +355,11 @@ function SelfMachineFormModal({
 
           <div className="space-y-3">
             <p className="text-xs font-semibold tracking-[0.16em] uppercase text-slate-500 dark:text-[#a4a4a4]">
-              Custos do Sistema (opcional)
+              Custos do Sistema em dólar (US$) — opcional
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <Input
-                label="Servidor (Backend)"
+                label="Servidor (Backend) US$"
                 type="number"
                 min="0"
                 step="0.01"
@@ -363,7 +367,7 @@ function SelfMachineFormModal({
                 onChange={(e) => setField("custoServidor", e.target.value)}
               />
               <Input
-                label="Banco de Dados"
+                label="Banco de Dados US$"
                 type="number"
                 min="0"
                 step="0.01"
@@ -371,7 +375,7 @@ function SelfMachineFormModal({
                 onChange={(e) => setField("custoBancoDados", e.target.value)}
               />
               <Input
-                label="Frontend (Vercel)"
+                label="Frontend (Vercel) US$"
                 type="number"
                 min="0"
                 step="0.01"
@@ -379,7 +383,7 @@ function SelfMachineFormModal({
                 onChange={(e) => setField("custoFrontend", e.target.value)}
               />
               <Input
-                label="Outros"
+                label="Outros US$"
                 type="number"
                 min="0"
                 step="0.01"
@@ -443,6 +447,17 @@ function SelfMachineFormModal({
 }
 
 function DetalhesModal({ data, onClose, onGerarPedido }) {
+  const { data: cotacoes = [] } = useQuery({
+    queryKey: ["cotacoes"],
+    queryFn: () => cotacoesApi.listar().then((r) => r.data),
+  });
+  const cotacaoDolar =
+    cotacoes.find((c) => c.moeda === "USD")?.valorEmReais ?? null;
+  const custoTotalReais =
+    cotacaoDolar === null
+      ? null
+      : Number(data?.custoTotalSistema || 0) * cotacaoDolar;
+
   if (!data) return null;
 
   const status = getStatusVisual(data);
@@ -568,44 +583,56 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
                   <span className="text-slate-500 dark:text-[#999] block text-xs">
                     Servidor
                   </span>
-                  {formatCurrency(data.custoServidor)}
+                  {formatCurrency(data.custoServidor, "USD")}
                 </p>
                 <p>
                   <span className="text-slate-500 dark:text-[#999] block text-xs">
                     Banco de Dados
                   </span>
-                  {formatCurrency(data.custoBancoDados)}
+                  {formatCurrency(data.custoBancoDados, "USD")}
                 </p>
                 <p>
                   <span className="text-slate-500 dark:text-[#999] block text-xs">
                     Frontend
                   </span>
-                  {formatCurrency(data.custoFrontend)}
+                  {formatCurrency(data.custoFrontend, "USD")}
                 </p>
                 <p>
                   <span className="text-slate-500 dark:text-[#999] block text-xs">
                     Outros
                   </span>
-                  {formatCurrency(data.custoOutros)}
+                  {formatCurrency(data.custoOutros, "USD")}
                 </p>
               </div>
               <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#242424] flex items-center justify-between text-sm">
                 <span className="text-slate-500 dark:text-[#999]">
-                  Custo Total / Margem
+                  Custo Total
                 </span>
-                <span>
-                  <span className="text-rose-600 dark:text-rose-300">
-                    {formatCurrency(data.custoTotalSistema)}
-                  </span>
-                  <span className="text-slate-400 dark:text-[#666]"> / </span>
-                  <span className="text-emerald-600 dark:text-emerald-300">
-                    {formatCurrency(
-                      Number(data.valorMensalidade || 0) -
-                        Number(data.custoTotalSistema || 0),
-                    )}
-                  </span>
+                <span className="text-rose-600 dark:text-rose-300">
+                  {formatCurrency(data.custoTotalSistema, "USD")}
+                  {custoTotalReais !== null && (
+                    <span className="text-slate-500 dark:text-[#999]">
+                      {" "}
+                      ≈ {formatCurrency(custoTotalReais)}
+                    </span>
+                  )}
                 </span>
               </div>
+              {custoTotalReais !== null && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-slate-500 dark:text-[#999]">
+                    Margem (mensalidade - custo)
+                    <span className="block text-xs">
+                      Dólar a {formatCurrency(cotacaoDolar)}
+                    </span>
+                  </span>
+                  <span className="text-emerald-600 dark:text-emerald-300">
+                    {formatCurrency(
+                      Number(data.valorMensalidade || 0) - custoTotalReais,
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -737,8 +764,8 @@ function RelatorioModal({ isOpen, onClose }) {
                   />
                   <KpiCard
                     label="Custos de Sistema"
-                    value={formatCurrency(rel.financeiro.custosSistema)}
-                    sub="Servidor, banco, frontend, outros"
+                    value={formatCurrency(rel.financeiro.custosSistemaReais)}
+                    sub={`${formatCurrency(rel.financeiro.custosSistema, "USD")} × ${formatCurrency(rel.financeiro.cotacaoDolar)}`}
                     color="text-rose-700 dark:text-rose-300"
                   />
                   <KpiCard
@@ -1057,8 +1084,13 @@ function RelatorioModal({ isOpen, onClose }) {
                             {c.nomeSistema}
                           </p>
                         </div>
-                        <span className="text-rose-700 dark:text-rose-300 text-sm font-semibold whitespace-nowrap">
-                          {formatCurrency(c.total)}
+                        <span className="text-right whitespace-nowrap">
+                          <span className="block text-rose-700 dark:text-rose-300 text-sm font-semibold">
+                            {formatCurrency(c.totalReais)}
+                          </span>
+                          <span className="block text-xs text-slate-400 dark:text-[#666]">
+                            {formatCurrency(c.total, "USD")}
+                          </span>
                         </span>
                       </div>
                     ))

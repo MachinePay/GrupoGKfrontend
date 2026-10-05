@@ -85,6 +85,11 @@ export const agendaApi = {
 };
 
 // ─── Fornecedores ────────────────────────────────────────────────────────────
+export const cotacoesApi = {
+  listar: () => api.get("/cotacoes"),
+  atualizar: (payload) => api.put("/cotacoes", payload),
+};
+
 export const fornecedoresApi = {
   listar: (params) => api.get("/fornecedores", { params }),
   criar: (payload) => api.post("/fornecedores", payload),

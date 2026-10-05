@@ -17,12 +17,18 @@ import {
   Trash2,
   ExternalLink,
   Store,
+  DollarSign,
 } from "lucide-react";
-import api, { cadastrosApi, fornecedoresApi } from "../services/api.js";
+import api, {
+  cadastrosApi,
+  cotacoesApi,
+  fornecedoresApi,
+} from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas } from "../hooks/useFinanceiro.js";
 import { Input, Select } from "../components/ui/FormField.jsx";
+import { formatCurrency, formatDate } from "../lib/utils.js";
 
 /* ─────────────── Empresas ─────────────── */
 function EmpresasTab() {
@@ -1135,6 +1141,100 @@ function FornecedoresTab() {
   );
 }
 
+/* ─────────────── Cotações ─────────────── */
+const MOEDAS_COTACAO = [
+  { moeda: "USD", label: "Dólar (US$ 1 em R$)" },
+  { moeda: "EUR", label: "Euro (€ 1 em R$)" },
+];
+
+function CotacoesTab() {
+  const qc = useQueryClient();
+  const [form, setForm] = useState(null);
+  const [salvo, setSalvo] = useState(false);
+
+  const { data: cotacoes = [], isLoading } = useQuery({
+    queryKey: ["cotacoes"],
+    queryFn: () => cotacoesApi.listar().then((r) => r.data),
+  });
+
+  const valores =
+    form ??
+    Object.fromEntries(cotacoes.map((c) => [c.moeda, String(c.valorEmReais)]));
+
+  const saveMutation = useMutation({
+    mutationFn: (payload) => cotacoesApi.atualizar(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cotacoes"] });
+      qc.invalidateQueries({ queryKey: ["selfmachine", "relatorio"] });
+      setForm(null);
+      setSalvo(true);
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+          Cotações de Moeda
+        </h3>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+          Valor de cada moeda em reais. Usado para converter os custos de
+          sistema (cadastrados em dólar) nos relatórios.
+        </p>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-4">
+        {isLoading ? (
+          <p className="text-sm text-slate-500 text-center">Carregando…</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {MOEDAS_COTACAO.map(({ moeda, label }) => {
+              const atual = cotacoes.find((c) => c.moeda === moeda);
+              return (
+                <div key={moeda} className="space-y-1">
+                  <Input
+                    label={label}
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={valores[moeda] ?? ""}
+                    onChange={(e) => {
+                      setSalvo(false);
+                      setForm({ ...valores, [moeda]: e.target.value });
+                    }}
+                  />
+                  {atual?.updatedAt && (
+                    <p className="text-xs text-slate-500">
+                      Atual: {formatCurrency(atual.valorEmReais)} · atualizado
+                      em {formatDate(atual.updatedAt)}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {saveMutation.isError && (
+          <p className="text-xs text-rose-500">
+            {saveMutation.error?.response?.data?.message ||
+              "Erro ao salvar cotações."}
+          </p>
+        )}
+        {salvo && <p className="text-xs text-emerald-500">Cotações salvas.</p>}
+
+        <button
+          onClick={() => saveMutation.mutate(valores)}
+          className="btn-primary w-full"
+          disabled={saveMutation.isPending || !form}
+        >
+          {saveMutation.isPending ? "Salvando…" : "Salvar Cotações"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Tema ─────────────── */
 function TemaTab() {
   const { theme, toggleTheme } = useTheme();
@@ -1271,6 +1371,12 @@ const TABS = [
     component: FornecedoresTab,
   },
   {
+    key: "cotacoes",
+    label: "Cotações",
+    icon: DollarSign,
+    component: CotacoesTab,
+  },
+  {
     key: "tema",
     label: "Tema",
     icon: Palette,
@@ -1300,6 +1406,8 @@ export default function ConfiguracoesPage() {
         return <FornecedoresTab />;
       case "usuarios":
         return isAdmin ? <UsuariosTab /> : null;
+      case "cotacoes":
+        return <CotacoesTab />;
       case "tema":
         return <TemaTab />;
       default:
