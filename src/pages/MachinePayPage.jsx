@@ -11,6 +11,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Clock,
+  Copy,
   CreditCard,
   Download,
   FileSpreadsheet,
@@ -114,6 +115,23 @@ function formatarTelefone(tel) {
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return tel || "";
+}
+
+// Copia texto para a area de transferencia (com fallback para navegadores antigos).
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = texto;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    if (!ok) throw new Error("Não foi possível copiar a mensagem.");
+  }
 }
 
 function linkWhatsApp(telefone, mensagem) {
@@ -1296,25 +1314,73 @@ function ConfirmModal({ title, message, confirmLabel = "Confirmar", danger, onCo
   );
 }
 
+// Rodape padrao das mensagens de cobranca (Pix e envio do comprovante).
+const MENSAGEM_RODAPE =
+  "💳 Pagamento via Pix\n" +
+  "Chave CNPJ:\n" +
+  "59996204000177\n\n" +
+  "Após o pagamento, por favor, envie o comprovante por este WhatsApp para confirmarmos a baixa.\n\n" +
+  "Já realizou o pagamento? Basta nos encaminhar o comprovante. ✅\n\n" +
+  "Agradecemos pela parceria! Estamos à disposição para ajudar.\n\n" +
+  "Equipe Financeira | MachinePay";
+
+// Mensagem para quem ja passou do vencimento (tom de alerta de bloqueio).
+function mensagemAtraso({ dias, maquinas, valor, diaVencimento }) {
+  return (
+    "Olá! Tudo bem?\n\n" +
+    "MachinePay | Financeiro\n\n" +
+    `Identificamos que a mensalidade abaixo permanece em aberto, com ${dias} ${dias === 1 ? "dia" : "dias"} de atraso:\n\n` +
+    `▪️ Equipamentos ativos: ${maquinas}\n` +
+    `▪️ Valor total: ${formatCurrency(valor)}\n` +
+    `▪️ Vencimento: dia ${diaVencimento}\n\n` +
+    "⚠️ Evite o bloqueio do cadastro e a suspensão dos serviços. Pedimos que regularize o pagamento para manter seus equipamentos conectados à MachinePay.\n\n" +
+    "💳 Pagamento via Pix\n" +
+    "Chave CNPJ:\n" +
+    "59996204000177\n\n" +
+    "Após o pagamento, envie o comprovante por este WhatsApp para confirmarmos a baixa.\n\n" +
+    "Já realizou o pagamento? Encaminhe o comprovante para conferirmos. Se precisar de ajuda para regularizar, fale com a nossa equipe.\n\n" +
+    "Equipe Financeira | MachinePay"
+  );
+}
+
+// Dias desde o vencimento (gravado ao meio-dia UTC), contando pelo dia de hoje.
+function diasDeAtraso(vencimento) {
+  const agora = new Date();
+  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12);
+  return Math.max(0, Math.round((hoje - new Date(vencimento).getTime()) / 86400000));
+}
+
 function mensagemCobranca(cobranca) {
   const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36;
+  const dia = new Date(cobranca.vencimento).getUTCDate();
+
+  if (cobranca.situacao === "ATRASADO") {
+    return mensagemAtraso({
+      dias: diasDeAtraso(cobranca.vencimento),
+      maquinas,
+      valor: cobranca.valor,
+      diaVencimento: dia,
+    });
+  }
+
   return (
-    `Olá, ${cobranca.cliente.nome}! Tudo bem?\n\n` +
-    `Segue a mensalidade Machine Pay de ${rotuloCompetencia(cobranca.competencia)}:\n` +
-    `• ${maquinas} máquina(s)\n` +
-    `• Valor: ${formatCurrency(cobranca.valor)}\n` +
-    `• Vencimento: ${formatDate(cobranca.vencimento)}\n\n` +
-    `Qualquer dúvida estamos à disposição.`
+    "Olá! Tudo bem? 😊\n\n" +
+    "MachinePay | Financeiro\n\n" +
+    "Segue o lembrete da sua mensalidade:\n\n" +
+    `▪️ Equipamentos ativos: ${maquinas}\n` +
+    `▪️ Valor total: ${formatCurrency(cobranca.valor)}\n` +
+    `▪️ Vencimento: dia ${dia}\n\n` +
+    MENSAGEM_RODAPE
   );
 }
 
 function mensagemInadimplencia(cliente) {
-  return (
-    `Olá, ${cliente.nome}! Tudo bem?\n\n` +
-    `Identificamos ${cliente.cobrancasAtrasadas} mensalidade(s) Machine Pay em aberto, ` +
-    `totalizando ${formatCurrency(cliente.valorAtrasado)}.\n` +
-    `Pode nos enviar o comprovante ou combinar o pagamento?\n\nObrigado!`
-  );
+  return mensagemAtraso({
+    dias: cliente.diasEmAtraso,
+    maquinas: cliente.totalMaquinas,
+    valor: cliente.valorAtrasado,
+    diaVencimento: cliente.diaVencimento,
+  });
 }
 
 // ─── Aba: Cobranças ─────────────────────────────────────────────────────────
@@ -1336,6 +1402,15 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   });
 
   const invalidar = () => qc.invalidateQueries({ queryKey: ["machinepay"] });
+
+  async function copiarMensagem(texto) {
+    try {
+      await copiarTexto(texto);
+      toast.show("Mensagem copiada · cole no WhatsApp ou onde preferir");
+    } catch (e) {
+      toast.show(erroApi(e), { error: true });
+    }
+  }
 
   const gerar = useMutation({
     mutationFn: () => machinePayApi.gerarCobrancas(competencia),
@@ -1628,8 +1703,19 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                               <MessageCircle size={15} />
                             </a>
                           )}
+                          {aberta && (
+                            <button
+                              type="button"
+                              onClick={() => copiarMensagem(mensagemCobranca(c))}
+                              title="Copiar mensagem de cobrança para enviar manualmente"
+                              className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-500/10 hover:text-blue-500"
+                            >
+                              <Copy size={15} />
+                            </button>
+                          )}
                           <Menu
                             items={[
+                              aberta && { label: "Copiar mensagem de cobrança", icon: Copy, onClick: () => copiarMensagem(mensagemCobranca(c)) },
                               aberta && { label: "Ajustar valor/vencimento", icon: Pencil, onClick: () => setEditar(c) },
                               { label: "Histórico do cliente", icon: History, onClick: () => setHistorico(c.clienteId) },
                               c.status === "PAGO" && {
@@ -2140,7 +2226,16 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
 
 // ─── Aba: Inadimplência ─────────────────────────────────────────────────────
 
-function InadimplenciaTab({ clientes }) {
+function InadimplenciaTab({ clientes, toast }) {
+  async function copiarMensagem(texto) {
+    try {
+      await copiarTexto(texto);
+      toast.show("Mensagem copiada · cole no WhatsApp ou onde preferir");
+    } catch (e) {
+      toast.show(erroApi(e), { error: true });
+    }
+  }
+
   const [historico, setHistorico] = useState(null);
   const devedores = useMemo(
     () => clientes.filter((c) => c.valorAtrasado > 0).sort((a, b) => b.diasEmAtraso - a.diasEmAtraso),
@@ -2228,6 +2323,14 @@ function InadimplenciaTab({ clientes }) {
                           <MessageCircle size={13} /> Cobrar
                         </a>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => copiarMensagem(mensagemInadimplencia(c))}
+                        title="Copiar mensagem para enviar manualmente"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20"
+                      >
+                        <Copy size={13} /> Copiar
+                      </button>
                       <button onClick={() => setHistorico(c.id)} className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-500/10 hover:text-blue-500" title="Histórico">
                         <History size={15} />
                       </button>
@@ -2424,7 +2527,7 @@ export default function MachinePayPage() {
           onImportar={() => setImportar(true)}
         />
       )}
-      {aba === "inadimplencia" && <InadimplenciaTab clientes={clientes} />}
+      {aba === "inadimplencia" && <InadimplenciaTab clientes={clientes} toast={toast} />}
 
       {importar && (
         <ImportarModal
