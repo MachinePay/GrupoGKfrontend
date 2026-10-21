@@ -12,6 +12,7 @@ import {
   Landmark,
   MonitorCog,
   Globe,
+  CreditCard,
   ChevronDown,
 } from "lucide-react";
 import logoGrupoGk from "../../assets/Logo Grupo Gk .png";
@@ -28,6 +29,12 @@ const NAV_KEYS = [
   { to: "/relatorios", chave: "NAV_RELATORIOS", Icon: PieChart },
   { to: "/analytics", chave: "NAV_ANALYTICS", Icon: BarChart3 },
   { to: "/selfmachine", chave: "NAV_SELFMACHINE", Icon: MonitorCog },
+  {
+    to: "/machinepay",
+    chave: "NAV_MACHINEPAY",
+    label: "Machine Pay",
+    Icon: CreditCard,
+  },
   { to: "/configuracoes", chave: "NAV_CONFIGURACOES", Icon: Settings },
 ];
 
@@ -123,7 +130,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {visibleNav.map(({ to, chave, Icon }) => (
+        {visibleNav.map(({ to, chave, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -138,7 +145,7 @@ export default function Sidebar() {
             }
           >
             <Icon size={17} />
-            {t(chave, chave.replace("NAV_", ""))}
+            {t(chave, label ?? chave.replace("NAV_", ""))}
           </NavLink>
         ))}
       </nav>

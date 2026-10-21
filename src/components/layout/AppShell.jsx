@@ -13,7 +13,7 @@ export default function AppShell() {
     >
       <Sidebar />
       <div
-        className="flex-1 flex flex-col ml-64 min-h-screen"
+        className="flex-1 min-w-0 flex flex-col ml-64 min-h-screen"
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
         <Header

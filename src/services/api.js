@@ -178,4 +178,31 @@ export const selfMachineApi = {
   relatorio: () => api.get("/selfmachine/saas/relatorio"),
 };
 
+// ─── Machine Pay ────────────────────────────────────────────────────────────
+export const machinePayApi = {
+  listarClientes: () => api.get("/machinepay/clientes"),
+  criarCliente: (payload) => api.post("/machinepay/clientes", payload),
+  atualizarCliente: (id, payload) =>
+    api.put(`/machinepay/clientes/${id}`, payload),
+  ajustarMaquinas: (id, payload) =>
+    api.post(`/machinepay/clientes/${id}/maquinas`, payload),
+  removerCliente: (id) => api.delete(`/machinepay/clientes/${id}`),
+  historicoCliente: (id) => api.get(`/machinepay/clientes/${id}/historico`),
+  importarClientes: (clientes) =>
+    api.post("/machinepay/clientes/importar", { clientes }),
+  competencia: (competencia) =>
+    api.get("/machinepay/cobrancas", { params: { competencia } }),
+  evolucao: (meses = 6) =>
+    api.get("/machinepay/cobrancas/evolucao", { params: { meses } }),
+  gerarCobrancas: (competencia) =>
+    api.post("/machinepay/cobrancas/gerar", { competencia }),
+  atualizarCobranca: (id, payload) =>
+    api.put(`/machinepay/cobrancas/${id}`, payload),
+  pagarCobranca: (id, payload) =>
+    api.post(`/machinepay/cobrancas/${id}/pagar`, payload),
+  estornarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/estornar`),
+  cancelarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/cancelar`),
+  removerCobranca: (id) => api.delete(`/machinepay/cobrancas/${id}`),
+};
+
 export default api;
