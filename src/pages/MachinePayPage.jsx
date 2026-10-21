@@ -20,6 +20,7 @@ import {
   MoreVertical,
   Pencil,
   Plus,
+  Power,
   PowerOff,
   RotateCcw,
   Search,
@@ -684,7 +685,7 @@ function ClienteModal({ cliente, onClose, onSaved }) {
   );
 }
 
-function AjusteMaquinasModal({ cliente, competencia, onClose, onSaved }) {
+function AjusteMaquinasModal({ cliente, competencia, cobrancaAtiva, onClose, onSaved }) {
   const [tipo, setTipo] = useState("PROPRIA");
   const [operacao, setOperacao] = useState("ADD");
   const [quantidade, setQuantidade] = useState(1);
@@ -704,7 +705,7 @@ function AjusteMaquinasModal({ cliente, competencia, onClose, onSaved }) {
         tipo,
         quantidade: delta,
         motivo,
-        aplicarNaCompetencia: aplicar ? competencia : undefined,
+        aplicarNaCompetencia: cobrancaAtiva && aplicar ? competencia : undefined,
       }),
     onSuccess: () => onSaved(delta, tipo),
   });
@@ -791,7 +792,7 @@ function AjusteMaquinasModal({ cliente, competencia, onClose, onSaved }) {
           )}
         </div>
 
-        {tipo !== "OFF" && (
+        {cobrancaAtiva && tipo !== "OFF" && (
           <label className="flex items-start gap-2 text-xs text-slate-400 cursor-pointer">
             <input
               type="checkbox"
@@ -1681,7 +1682,30 @@ function SortTh({ label, campo, sort, setSort, className }) {
   );
 }
 
-function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
+function TagMaquina({ valor, rotulo, tom = "slate" }) {
+  if (!valor) return null;
+  const tons = {
+    slate: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
+    blue: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
+    amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  };
+  return (
+    <span className={cn("px-1.5 py-px rounded-md text-[10px] font-medium whitespace-nowrap", tons[tom])}>
+      {valor} {rotulo}
+    </span>
+  );
+}
+
+// Mostra de onde vem o valor: "9 × R$ 40,00 + 2 × R$ 65,00".
+function formulaMensalidade(c) {
+  if (c.valorFixo !== null) return "Valor combinado";
+  const partes = [];
+  if (c.maquinasProprias) partes.push(`${c.maquinasProprias} × ${formatCurrency(c.valorMensalidade)}`);
+  if (c.maquinasPlano36) partes.push(`${c.maquinasPlano36} × ${formatCurrency(c.valorMensalidade36)}`);
+  return partes.join(" + ") || "Sem máquinas";
+}
+
+function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, onImportar }) {
   const qc = useQueryClient();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState("ATIVO");
@@ -1694,6 +1718,9 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
 
   const invalidar = () => qc.invalidateQueries({ queryKey: ["machinepay"] });
 
+  // Em modo cadastro nao ha cobranca aberta para atualizar.
+  const aplicarNaCompetencia = cobrancaAtiva ? competencia : undefined;
+
   async function ajusteRapido(cliente, quantidade) {
     setPendente(cliente.id);
     try {
@@ -1701,7 +1728,7 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
         tipo: "PROPRIA",
         quantidade,
         motivo: "Ajuste rápido",
-        aplicarNaCompetencia: competencia,
+        aplicarNaCompetencia,
       });
       await invalidar();
       toast.show(
@@ -1712,7 +1739,7 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
               tipo: "PROPRIA",
               quantidade: -quantidade,
               motivo: "Desfeito",
-              aplicarNaCompetencia: competencia,
+              aplicarNaCompetencia,
             });
             invalidar();
           },
@@ -1774,6 +1801,36 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
     return <div className="py-20 flex justify-center text-slate-500"><Loader2 className="animate-spin" /></div>;
   }
 
+  if (!clientes.length) {
+    return (
+      <>
+        <EmptyState
+          icon={Users}
+          title="Nenhum cliente cadastrado ainda"
+          description="Importe a planilha de controle para trazer todos os clientes de uma vez, ou cadastre um por um."
+        >
+          <button onClick={onImportar} className="btn-primary inline-flex items-center gap-2">
+            <Upload size={15} /> Importar planilha
+          </button>
+          <button onClick={() => setEditando({})} className="btn-ghost inline-flex items-center gap-2">
+            <Plus size={15} /> Cadastrar manualmente
+          </button>
+        </EmptyState>
+        {editando && (
+          <ClienteModal
+            cliente={null}
+            onClose={() => setEditando(null)}
+            onSaved={(c) => {
+              setEditando(null);
+              invalidar();
+              toast.show(`${c.nome} cadastrado`);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -1781,7 +1838,13 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
         <Kpi icon={CreditCard} label="Máquinas próprias" value={totais.proprias} tone="slate" />
         <Kpi icon={CreditCard} label="Máquinas plano 36" value={totais.plano36} tone="slate" />
         <Kpi icon={PowerOff} label="Máquinas off" value={totais.off} tone={totais.off ? "amber" : "slate"} detail="Paradas / sem uso" />
-        <Kpi icon={Wallet} tone="green" label="Receita mensal" value={formatCurrency(totais.mrr)} detail={`${totais.proprias + totais.plano36} máquinas cobradas`} />
+        <Kpi
+          icon={Wallet}
+          tone="green"
+          label={cobrancaAtiva ? "Receita mensal" : "Receita mensal prevista"}
+          value={formatCurrency(totais.mrr)}
+          detail={`${totais.proprias + totais.plano36} máquinas cobradas`}
+        />
       </div>
 
       <div className="glass rounded-2xl card-shadow">
@@ -1789,7 +1852,9 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
           <SearchBox value={busca} onChange={setBusca} placeholder="Buscar por nome, telefone, documento..." />
           <div className="flex flex-wrap gap-1">
             <Chip active={filtro === "ATIVO"} onClick={() => setFiltro("ATIVO")} count={contagem.ATIVO}>Ativos</Chip>
-            <Chip active={filtro === "DEVENDO"} onClick={() => setFiltro("DEVENDO")} count={contagem.DEVENDO}>Devendo</Chip>
+            {cobrancaAtiva && (
+              <Chip active={filtro === "DEVENDO"} onClick={() => setFiltro("DEVENDO")} count={contagem.DEVENDO}>Devendo</Chip>
+            )}
             <Chip active={filtro === "SUSPENSO"} onClick={() => setFiltro("SUSPENSO")} count={contagem.SUSPENSO}>Suspensos</Chip>
             <Chip active={filtro === "INATIVO"} onClick={() => setFiltro("INATIVO")} count={contagem.INATIVO}>Inativos</Chip>
             <Chip active={filtro === "TODOS"} onClick={() => setFiltro("TODOS")} count={contagem.TODOS}>Todos</Chip>
@@ -1809,98 +1874,107 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-[var(--border-color)]">
                 <SortTh label="Cliente" campo="nome" sort={sort} setSort={setSort} className="pl-4" />
-                <SortTh label="Dia pgto" campo="dia" sort={sort} setSort={setSort} />
+                <SortTh label="Vencimento" campo="dia" sort={sort} setSort={setSort} />
                 <SortTh label="Máquinas" campo="maquinas" sort={sort} setSort={setSort} />
-                <th className="px-3 py-2.5 font-medium">Plano</th>
                 <SortTh label="Mensalidade" campo="valor" sort={sort} setSort={setSort} className="text-right" />
-                <SortTh label="Último pagamento" campo="ultimo" sort={sort} setSort={setSort} />
-                <SortTh label="Situação" campo="atraso" sort={sort} setSort={setSort} />
+                {cobrancaAtiva ? (
+                  <>
+                    <SortTh label="Último pagamento" campo="ultimo" sort={sort} setSort={setSort} />
+                    <SortTh label="Situação" campo="atraso" sort={sort} setSort={setSort} />
+                  </>
+                ) : (
+                  <th className="px-3 py-2.5 font-medium">Status</th>
+                )}
                 <th className="px-3 py-2.5 font-medium text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-color)]">
               {lista.map((c) => (
                 <tr key={c.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-                  <td className="pl-4 pr-3 py-2.5 min-w-[220px]">
-                    <button onClick={() => setHistorico(c.id)} className="text-left">
+                  <td className="pl-4 pr-3 py-3 min-w-[220px]">
+                    <button onClick={() => setHistorico(c.id)} className="text-left" title="Ver histórico do cliente">
                       <p className="font-medium text-white hover:text-blue-500 transition-colors">{c.nome}</p>
                       <p className="text-xs text-slate-500">
-                        {formatarTelefone(c.telefone) || "Sem telefone"}
+                        {formatarTelefone(c.telefone) || <span className="italic">Sem telefone</span>}
                         {c.observacoes && <span title={c.observacoes}> · {c.observacoes.slice(0, 40)}{c.observacoes.length > 40 && "…"}</span>}
                       </p>
                     </button>
                   </td>
-                  <td className="px-3 py-2.5 text-slate-400 tabular-nums whitespace-nowrap">Dia {c.diaVencimento}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1">
+                  <td className="px-3 py-3 text-slate-400 tabular-nums whitespace-nowrap">Todo dia {c.diaVencimento}</td>
+                  <td className="px-3 py-3">
+                    <div className="inline-flex items-center rounded-lg border border-[var(--input-border)] overflow-hidden">
                       <button
                         disabled={pendente === c.id || c.maquinasProprias === 0}
                         onClick={() => ajusteRapido(c, -1)}
                         title="Remover 1 máquina própria"
-                        className="p-1 rounded-md text-slate-400 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-30"
+                        className="px-1.5 py-1 text-slate-400 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-30"
                       >
                         <Minus size={13} />
                       </button>
-                      <span className="min-w-[28px] text-center font-semibold text-white tabular-nums">
+                      <span className="min-w-[34px] text-center font-semibold text-white tabular-nums">
                         {pendente === c.id ? <Loader2 size={13} className="animate-spin inline" /> : c.totalMaquinas}
                       </span>
                       <button
                         disabled={pendente === c.id}
                         onClick={() => ajusteRapido(c, 1)}
                         title="Adicionar 1 máquina própria"
-                        className="p-1 rounded-md text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-500 disabled:opacity-30"
+                        className="px-1.5 py-1 text-slate-400 hover:bg-emerald-500/10 hover:text-emerald-500 disabled:opacity-30"
                       >
                         <Plus size={13} />
                       </button>
                     </div>
-                    <p className="text-[11px] text-slate-500 whitespace-nowrap">
-                      {c.maquinasProprias} próp.{c.maquinasPlano36 > 0 && ` · ${c.maquinasPlano36} p36`}
-                      {c.maquinasOff > 0 && <span className="text-amber-600 dark:text-amber-400"> · {c.maquinasOff} off</span>}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <TagMaquina valor={c.maquinasProprias} rotulo="próprias" />
+                      <TagMaquina valor={c.maquinasPlano36} rotulo="plano 36" tom="blue" />
+                      <TagMaquina valor={c.maquinasOff} rotulo="off" tom="amber" />
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-right whitespace-nowrap">
+                    <p className="font-semibold text-white tabular-nums">{formatCurrency(c.valorCalculado)}</p>
+                    <p className={cn("text-[11px] tabular-nums", c.valorFixo !== null ? "text-amber-600 dark:text-amber-300" : "text-slate-500")}>
+                      {formulaMensalidade(c)}
                     </p>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">
-                    {c.valorFixo !== null ? (
-                      <span className="text-amber-600 dark:text-amber-300">Valor combinado</span>
-                    ) : (
-                      <>
-                        {formatCurrency(c.valorMensalidade)}/máq
-                        {c.maquinasPlano36 > 0 && <><br />{formatCurrency(c.valorMensalidade36)}/p36</>}
-                      </>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-semibold text-white tabular-nums whitespace-nowrap">
-                    {formatCurrency(c.valorCalculado)}
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <p className="text-slate-300">{c.ultimoPagamento ? formatDate(c.ultimoPagamento) : "—"}</p>
-                    <p className="text-[11px] text-slate-500">{tempoRelativo(c.diasDesdeUltimoPagamento)}</p>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {c.status !== "ATIVO" ? (
-                      <Pill status={c.status} />
-                    ) : c.valorAtrasado > 0 ? (
-                      <div>
-                        <Pill status="ATRASADO">{c.diasEmAtraso} dias</Pill>
-                        <p className="text-[11px] text-red-500 mt-0.5 tabular-nums">
-                          {formatCurrency(c.valorAtrasado)} · {c.cobrancasAtrasadas} mês(es)
-                        </p>
-                      </div>
-                    ) : (
-                      <Pill status="PAGO">Em dia</Pill>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
+                  {cobrancaAtiva ? (
+                    <>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <p className="text-slate-300">{c.ultimoPagamento ? formatDate(c.ultimoPagamento) : "—"}</p>
+                        <p className="text-[11px] text-slate-500">{tempoRelativo(c.diasDesdeUltimoPagamento)}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        {c.status !== "ATIVO" ? (
+                          <Pill status={c.status} />
+                        ) : c.valorAtrasado > 0 ? (
+                          <div>
+                            <Pill status="ATRASADO">Atrasado há {c.diasEmAtraso} dias</Pill>
+                            <p className="text-[11px] text-red-500 mt-0.5 tabular-nums">
+                              {formatCurrency(c.valorAtrasado)} · {c.cobrancasAtrasadas} {c.cobrancasAtrasadas === 1 ? "mês" : "meses"}
+                            </p>
+                          </div>
+                        ) : (
+                          <Pill status="PAGO">Em dia</Pill>
+                        )}
+                      </td>
+                    </>
+                  ) : (
+                    <td className="px-3 py-3"><Pill status={c.status} /></td>
+                  )}
+                  <td className="px-3 py-3">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => setAjuste(c)} title="Adicionar / remover máquinas" className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-500/10 hover:text-blue-500">
-                        <CreditCard size={15} />
+                      <button
+                        onClick={() => setAjuste(c)}
+                        title="Adicionar ou remover máquinas próprias, plano 36 ou off"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-blue-600 dark:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 whitespace-nowrap"
+                      >
+                        <CreditCard size={13} /> Máquinas
                       </button>
-                      <button onClick={() => setEditando(c)} title="Editar" className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-500/10 hover:text-blue-500">
+                      <button onClick={() => setEditando(c)} title="Editar cadastro" className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-500/10 hover:text-blue-500">
                         <Pencil size={15} />
                       </button>
                       <Menu
                         items={[
                           { label: "Histórico", icon: History, onClick: () => setHistorico(c.id) },
-                          c.telefone && c.valorAtrasado > 0 && {
+                          cobrancaAtiva && c.telefone && c.valorAtrasado > 0 && {
                             label: "Cobrar no WhatsApp",
                             icon: MessageCircle,
                             onClick: () => window.open(linkWhatsApp(c.telefone, mensagemInadimplencia(c)), "_blank"),
@@ -1976,6 +2050,7 @@ function ClientesTab({ clientes, isLoading, competencia, toast, onImportar }) {
         <AjusteMaquinasModal
           cliente={ajuste}
           competencia={competencia}
+          cobrancaAtiva={cobrancaAtiva}
           onClose={() => setAjuste(null)}
           onSaved={(delta, tipo) => {
             const nome = ajuste.nome;
@@ -2102,9 +2177,16 @@ function InadimplenciaTab({ clientes }) {
 export default function MachinePayPage() {
   const qc = useQueryClient();
   const toast = useToast();
-  const [aba, setAba] = useState("cobrancas");
+  const [abaEscolhida, setAba] = useState("cobrancas");
   const [competencia, setCompetencia] = useState(competenciaAtual);
   const [importar, setImportar] = useState(false);
+  const [confirmarCobranca, setConfirmarCobranca] = useState(null);
+
+  const configQuery = useQuery({
+    queryKey: ["machinepay", "config"],
+    queryFn: () => machinePayApi.config().then((r) => r.data),
+  });
+  const cobrancaAtiva = Boolean(configQuery.data?.cobrancaAtiva);
 
   const clientesQuery = useQuery({
     queryKey: ["machinepay", "clientes"],
@@ -2113,15 +2195,19 @@ export default function MachinePayPage() {
   const competenciaQuery = useQuery({
     queryKey: ["machinepay", "competencia", competencia],
     queryFn: () => machinePayApi.competencia(competencia).then((r) => r.data),
+    enabled: cobrancaAtiva,
   });
   const { data: contas = [] } = useQuery({
     queryKey: ["contas"],
     queryFn: () => cadastrosApi.listarContas().then((r) => r.data),
+    enabled: cobrancaAtiva,
   });
 
   const clientes = clientesQuery.data ?? [];
   const devendo = clientes.filter((c) => c.valorAtrasado > 0).length;
-  const erro = clientesQuery.error || competenciaQuery.error;
+  const erro = clientesQuery.error || competenciaQuery.error || configQuery.error;
+  // Em modo cadastro so existe a lista de clientes.
+  const aba = cobrancaAtiva ? abaEscolhida : "clientes";
 
   const abas = [
     { key: "cobrancas", label: "Cobranças do mês", icon: CircleDollarSign },
@@ -2129,59 +2215,115 @@ export default function MachinePayPage() {
     { key: "inadimplencia", label: "Inadimplência", icon: AlertTriangle, count: devendo || undefined },
   ];
 
+  function alternarCobranca(ativar) {
+    setConfirmarCobranca({
+      title: ativar ? "Ativar a cobrança?" : "Desativar a cobrança?",
+      message: ativar
+        ? "As abas Cobranças do mês e Inadimplência passam a aparecer e será possível gerar as mensalidades do mês a partir do cadastro de cada cliente. Nenhuma cobrança é criada automaticamente: você ainda precisa clicar em Gerar cobranças."
+        : "O Machine Pay volta a ser apenas cadastro de clientes e máquinas. As cobranças já geradas ficam guardadas e reaparecem quando a cobrança for ativada de novo.",
+      confirmLabel: ativar ? "Ativar cobrança" : "Desativar",
+      danger: !ativar,
+      onConfirm: async () => {
+        await machinePayApi.salvarConfig({ cobrancaAtiva: ativar });
+        await qc.invalidateQueries({ queryKey: ["machinepay"] });
+        if (ativar) setAba("cobrancas");
+        toast.show(ativar ? "Cobrança ativada" : "Cobrança desativada · modo cadastro");
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white">Machine Pay</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Clientes, máquinas e mensalidades — tudo que estava na planilha, agora com controle de pagamento
+            {cobrancaAtiva
+              ? "Clientes, máquinas e mensalidades, com controle de pagamento"
+              : "Cadastro de clientes, máquinas e valores de mensalidade"}
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-xl glass p-1 shrink-0">
-          <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, -1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Mês anterior">
-            <ChevronLeft size={16} />
-          </button>
-          <span className="px-2 min-w-[130px] text-center text-sm font-semibold text-white">
-            {rotuloCompetencia(competencia)}
-          </span>
-          <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, 1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Próximo mês">
-            <ChevronRight size={16} />
-          </button>
-          {competencia !== competenciaAtual() && (
-            <button onClick={() => setCompetencia(competenciaAtual())} className="px-2 py-1 rounded-lg text-xs font-medium text-blue-500 hover:bg-blue-500/10">
-              Hoje
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {cobrancaAtiva && (
+            <div className="flex items-center gap-1 rounded-xl glass p-1">
+              <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, -1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Mês anterior">
+                <ChevronLeft size={16} />
+              </button>
+              <span className="px-2 min-w-[130px] text-center text-sm font-semibold text-white">
+                {rotuloCompetencia(competencia)}
+              </span>
+              <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, 1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Próximo mês">
+                <ChevronRight size={16} />
+              </button>
+              {competencia !== competenciaAtual() && (
+                <button onClick={() => setCompetencia(competenciaAtual())} className="px-2 py-1 rounded-lg text-xs font-medium text-blue-500 hover:bg-blue-500/10">
+                  Hoje
+                </button>
+              )}
+            </div>
+          )}
+          {configQuery.isLoading ? null : cobrancaAtiva ? (
+            <button
+              onClick={() => alternarCobranca(false)}
+              title="Clique para voltar ao modo apenas cadastro"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Cobrança ativa
+            </button>
+          ) : (
+            <button
+              onClick={() => alternarCobranca(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-[#fff] bg-emerald-600 hover:bg-emerald-500 card-shadow"
+            >
+              <Power size={15} /> Ativar cobrança
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-[var(--border-color)]">
-        {abas.map(({ key, label, icon: Icon, count }) => (
-          <button
-            key={key}
-            onClick={() => setAba(key)}
-            className={cn(
-              "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all",
-              aba === key
-                ? "border-blue-600 text-blue-600 dark:text-blue-300"
-                : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white",
-            )}
-          >
-            <Icon size={15} /> {label}
-            {count !== undefined && (
-              <span
-                className={cn(
-                  "px-1.5 rounded-md text-[10px] tabular-nums",
-                  key === "inadimplencia" ? "bg-red-500/15 text-red-500" : "bg-slate-500/10",
-                )}
-              >
-                {count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {!cobrancaAtiva && !configQuery.isLoading && (
+        <div className="flex items-start gap-3 rounded-2xl p-4 border border-amber-500/30 bg-amber-500/5">
+          <span className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-300 shrink-0">
+            <PowerOff size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-white">Modo cadastro: a cobrança está desativada</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Use esta tela para cadastrar e conferir clientes, máquinas e valores. Nenhuma mensalidade é gerada e ninguém aparece como devendo.
+              Quando quiser começar a cobrar, clique em <b>Ativar cobrança</b>.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {cobrancaAtiva && (
+        <div className="flex gap-1 border-b border-[var(--border-color)]">
+          {abas.map(({ key, label, icon: Icon, count }) => (
+            <button
+              key={key}
+              onClick={() => setAba(key)}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 rounded-t-lg",
+                aba === key
+                  ? "border-blue-600 text-blue-600 dark:text-blue-300"
+                  : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white",
+              )}
+            >
+              <Icon size={15} /> {label}
+              {count !== undefined && (
+                <span
+                  className={cn(
+                    "px-1.5 rounded-md text-[10px] tabular-nums",
+                    key === "inadimplencia" ? "bg-red-500/15 text-red-500" : "bg-slate-500/10",
+                  )}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {erro && (
         <div className="rounded-xl p-4 border border-red-500/30 bg-red-500/5 text-sm text-red-500">
@@ -2203,8 +2345,9 @@ export default function MachinePayPage() {
       {aba === "clientes" && (
         <ClientesTab
           clientes={clientes}
-          isLoading={clientesQuery.isLoading}
+          isLoading={clientesQuery.isLoading || configQuery.isLoading}
           competencia={competencia}
+          cobrancaAtiva={cobrancaAtiva}
           toast={toast}
           onImportar={() => setImportar(true)}
         />
@@ -2222,6 +2365,7 @@ export default function MachinePayPage() {
           }}
         />
       )}
+      {confirmarCobranca && <ConfirmModal {...confirmarCobranca} onClose={() => setConfirmarCobranca(null)} />}
       {toast.node}
     </div>
   );

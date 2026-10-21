@@ -180,6 +180,8 @@ export const selfMachineApi = {
 
 // ─── Machine Pay ────────────────────────────────────────────────────────────
 export const machinePayApi = {
+  config: () => api.get("/machinepay/config"),
+  salvarConfig: (payload) => api.put("/machinepay/config", payload),
   listarClientes: () => api.get("/machinepay/clientes"),
   criarCliente: (payload) => api.post("/machinepay/clientes", payload),
   atualizarCliente: (id, payload) =>
