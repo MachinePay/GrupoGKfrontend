@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   Ban,
+  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -281,6 +282,32 @@ function Chip({ active, onClick, children, count }) {
           {count}
         </span>
       )}
+    </button>
+  );
+}
+
+function DiaVencimentoChip({ ativo, onClick, count, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={ativo ? "Clique para mostrar todos os vencimentos" : "Mostrar só este vencimento"}
+      className={cn(
+        "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all",
+        ativo
+          ? "border-blue-600 bg-blue-600 text-[#fff]"
+          : "border-[var(--input-border)] text-slate-300 hover:border-blue-500 hover:text-blue-500",
+      )}
+    >
+      {children}
+      <span
+        className={cn(
+          "px-1.5 rounded-md text-[10px] tabular-nums",
+          ativo ? "bg-white/20 text-[#fff]" : "bg-slate-500/10 text-slate-500",
+        )}
+      >
+        {count}
+      </span>
     </button>
   );
 }
@@ -1295,6 +1322,7 @@ function mensagemInadimplencia(cliente) {
 function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, onImportar }) {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState("TODAS");
+  const [diaVencimento, setDiaVencimento] = useState(null);
   const [busca, setBusca] = useState("");
   const [selecaoBruta, setSelecionadas] = useState(new Set());
   const [receber, setReceber] = useState(null);
@@ -1325,23 +1353,44 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   const cobrancas = useMemo(() => dados?.cobrancas ?? [], [dados]);
   const resumo = dados?.resumo;
 
+  // Dias de vencimento existentes no mes (vencimento gravado ao meio-dia UTC).
+  const diasVencimento = useMemo(() => {
+    const porDia = new Map();
+    for (const c of cobrancas) {
+      const dia = new Date(c.vencimento).getUTCDate();
+      porDia.set(dia, (porDia.get(dia) || 0) + 1);
+    }
+    return [...porDia.entries()].sort((a, b) => a[0] - b[0]);
+  }, [cobrancas]);
+
+  // Dia escolhido que nao existe neste mes volta para "todos".
+  const diaAtivo = diasVencimento.some(([dia]) => dia === diaVencimento) ? diaVencimento : null;
+
+  const doDia = useMemo(
+    () =>
+      diaAtivo === null
+        ? cobrancas
+        : cobrancas.filter((c) => new Date(c.vencimento).getUTCDate() === diaAtivo),
+    [cobrancas, diaAtivo],
+  );
+
   const contagem = useMemo(() => {
-    const c = { TODAS: cobrancas.length, ABERTAS: 0, ATRASADO: 0, PAGO: 0, CANCELADO: 0 };
-    for (const item of cobrancas) {
+    const c = { TODAS: doDia.length, ABERTAS: 0, ATRASADO: 0, PAGO: 0, CANCELADO: 0 };
+    for (const item of doDia) {
       if (item.situacao === "PENDENTE" || item.situacao === "ATRASADO") c.ABERTAS += 1;
       if (c[item.situacao] !== undefined) c[item.situacao] += 1;
     }
     return c;
-  }, [cobrancas]);
+  }, [doDia]);
 
   const lista = useMemo(() => {
     const termo = normalizarBusca(busca.trim());
-    return cobrancas.filter((c) => {
+    return doDia.filter((c) => {
       if (filtro === "ABERTAS" && !["PENDENTE", "ATRASADO"].includes(c.situacao)) return false;
       if (!["TODAS", "ABERTAS"].includes(filtro) && c.situacao !== filtro) return false;
       return !termo || normalizarBusca(`${c.cliente.nome} ${c.cliente.telefone}`).includes(termo);
     });
-  }, [cobrancas, filtro, busca]);
+  }, [doDia, filtro, busca]);
 
   const abertasVisiveis = lista.filter((c) => c.status === "PENDENTE");
   // Mantem selecionadas apenas as cobrancas abertas visiveis (troca de mes/filtro limpa).
@@ -1465,6 +1514,29 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
               <Download size={14} /> Excel
             </button>
           </div>
+
+          {diasVencimento.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-[var(--border-color)]">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 mr-1">
+                <CalendarDays size={14} /> Vencimento
+              </span>
+              {diasVencimento.length > 1 && (
+                <DiaVencimentoChip ativo={diaAtivo === null} onClick={() => setDiaVencimento(null)} count={cobrancas.length}>
+                  Todos
+                </DiaVencimentoChip>
+              )}
+              {diasVencimento.map(([dia, qtd]) => (
+                <DiaVencimentoChip
+                  key={dia}
+                  ativo={diaAtivo === dia}
+                  onClick={() => setDiaVencimento(diaAtivo === dia ? null : dia)}
+                  count={qtd}
+                >
+                  Venc. {dia}
+                </DiaVencimentoChip>
+              ))}
+            </div>
+          )}
 
           {selecionadas.size > 0 && (
             <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20">
