@@ -892,7 +892,9 @@ function HistoricoModal({ clienteId, onClose }) {
               ["Mensalidade", formatCurrency(cliente.valorCalculado)],
               [
                 "Máquinas",
-                `${cliente.totalMaquinas}${cliente.maquinasOff ? ` (${cliente.maquinasOff} off)` : ""}`,
+                `${cliente.totalMaquinas}${cliente.maquinasOff ? ` (${cliente.maquinasOff} off)` : ""}${
+                  cliente.maquinasOnInativas ? ` · ${cliente.maquinasOnInativas} on inativas` : ""
+                }`,
               ],
               [
                 "Último pagamento",
@@ -914,9 +916,37 @@ function HistoricoModal({ clienteId, onClose }) {
             <Chip active={aba === "maquinas"} onClick={() => setAba("maquinas")} count={data.ajustes.length}>
               Máquinas
             </Chip>
+            {data.maquinas?.length > 0 && (
+              <Chip active={aba === "painel"} onClick={() => setAba("painel")} count={data.maquinas.length}>
+                No painel
+              </Chip>
+            )}
           </div>
 
-          {aba === "cobrancas" ? (
+          {aba === "painel" ? (
+            <div className="divide-y divide-[var(--border-color)]">
+              {data.maquinas.map((m) => (
+                <div key={m.posId} className="flex items-center justify-between py-2.5 gap-3">
+                  <div>
+                    <p className="text-sm text-white">{m.nome || `Caixa ${m.posId}`}</p>
+                    <p className="text-xs text-slate-500">
+                      Caixa {m.posId} · última venda{" "}
+                      {m.ultimaVendaEm
+                        ? new Date(m.ultimaVendaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                        : "há mais de 30 dias / nunca"}
+                    </p>
+                  </div>
+                  {!m.ligada ? (
+                    <TagMaquina valor="OFF" rotulo="" tom="amber" />
+                  ) : m.inativa ? (
+                    <TagMaquina valor="ON" rotulo="inativa" tom="red" />
+                  ) : (
+                    <TagMaquina valor="ON" rotulo="" tom="blue" />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : aba === "cobrancas" ? (
             data.cobrancas.length ? (
               <div className="divide-y divide-[var(--border-color)]">
                 {data.cobrancas.map((c) => (
@@ -1846,6 +1876,7 @@ function TagMaquina({ valor, rotulo, tom = "slate" }) {
     slate: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
     blue: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
     amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    red: "bg-red-500/10 text-red-600 dark:text-red-300",
   };
   return (
     <span className={cn("px-1.5 py-px rounded-md text-[10px] font-medium whitespace-nowrap", tons[tom])}>
@@ -1911,10 +1942,11 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
   }
 
   const contagem = useMemo(() => {
-    const c = { TODOS: clientes.length, ATIVO: 0, SUSPENSO: 0, INATIVO: 0, DEVENDO: 0 };
+    const c = { TODOS: clientes.length, ATIVO: 0, SUSPENSO: 0, INATIVO: 0, DEVENDO: 0, ON_INATIVAS: 0 };
     for (const cl of clientes) {
       c[cl.status] += 1;
       if (cl.valorAtrasado > 0) c.DEVENDO += 1;
+      if (cl.maquinasOnInativas > 0) c.ON_INATIVAS += 1;
     }
     return c;
   }, [clientes]);
@@ -1926,6 +1958,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
       proprias: ativos.reduce((a, c) => a + c.maquinasProprias, 0),
       plano36: ativos.reduce((a, c) => a + c.maquinasPlano36, 0),
       off: clientes.reduce((a, c) => a + c.maquinasOff, 0),
+      onInativas: clientes.reduce((a, c) => a + (c.maquinasOnInativas || 0), 0),
       mrr: ativos.reduce((a, c) => a + c.valorCalculado, 0),
     };
   }, [clientes]);
@@ -1944,7 +1977,8 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
     return clientes
       .filter((c) => {
         if (filtro === "DEVENDO" && !(c.valorAtrasado > 0)) return false;
-        if (!["TODOS", "DEVENDO"].includes(filtro) && c.status !== filtro) return false;
+        if (filtro === "ON_INATIVAS" && !(c.maquinasOnInativas > 0)) return false;
+        if (!["TODOS", "DEVENDO", "ON_INATIVAS"].includes(filtro) && c.status !== filtro) return false;
         return !termo || normalizarBusca(`${c.nome} ${c.telefone} ${c.documento} ${c.observacoes}`).includes(termo);
       })
       .sort((a, b) => {
@@ -1991,11 +2025,18 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <Kpi icon={Users} label="Clientes ativos" value={totais.ativos} detail={`${contagem.SUSPENSO} suspensos · ${contagem.INATIVO} inativos`} />
         <Kpi icon={CreditCard} label="Máquinas próprias" value={totais.proprias} tone="slate" />
         <Kpi icon={CreditCard} label="Máquinas plano 36" value={totais.plano36} tone="slate" />
-        <Kpi icon={PowerOff} label="Máquinas off" value={totais.off} tone={totais.off ? "amber" : "slate"} detail="Paradas / sem uso" />
+        <Kpi icon={PowerOff} label="Máquinas off" value={totais.off} tone={totais.off ? "amber" : "slate"} detail="Desligadas no painel" />
+        <Kpi
+          icon={AlertTriangle}
+          label="Máquinas on inativas"
+          value={totais.onInativas}
+          tone={totais.onInativas ? "red" : "slate"}
+          detail="Ligadas, sem venda há 30 dias"
+        />
         <Kpi
           icon={Wallet}
           tone="green"
@@ -2012,6 +2053,9 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
             <Chip active={filtro === "ATIVO"} onClick={() => setFiltro("ATIVO")} count={contagem.ATIVO}>Ativos</Chip>
             {cobrancaAtiva && (
               <Chip active={filtro === "DEVENDO"} onClick={() => setFiltro("DEVENDO")} count={contagem.DEVENDO}>Devendo</Chip>
+            )}
+            {contagem.ON_INATIVAS > 0 && (
+              <Chip active={filtro === "ON_INATIVAS"} onClick={() => setFiltro("ON_INATIVAS")} count={contagem.ON_INATIVAS}>Com on inativas</Chip>
             )}
             <Chip active={filtro === "SUSPENSO"} onClick={() => setFiltro("SUSPENSO")} count={contagem.SUSPENSO}>Suspensos</Chip>
             <Chip active={filtro === "INATIVO"} onClick={() => setFiltro("INATIVO")} count={contagem.INATIVO}>Inativos</Chip>
@@ -2085,6 +2129,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                       <TagMaquina valor={c.maquinasProprias} rotulo="próprias" />
                       <TagMaquina valor={c.maquinasPlano36} rotulo="plano 36" tom="blue" />
                       <TagMaquina valor={c.maquinasOff} rotulo="off" tom="amber" />
+                      <TagMaquina valor={c.maquinasOnInativas} rotulo="on inativas" tom="red" />
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
@@ -2349,6 +2394,71 @@ function InadimplenciaTab({ clientes, toast }) {
 
 // ─── Página ─────────────────────────────────────────────────────────────────
 
+// Busca tudo no painel Machine Pay (clientes, ON/OFF e vendas dos ultimos 30
+// dias). Roda em segundo plano no backend; aqui so acompanhamos o status.
+function AtualizarPainelButton({ toast }) {
+  const qc = useQueryClient();
+  const [disparado, setDisparado] = useState(false);
+  const { data: status } = useQuery({
+    queryKey: ["machinepay", "painel-status"],
+    queryFn: () => machinePayApi.statusPainel().then((r) => r.data),
+    refetchInterval: 60000,
+  });
+  const emAndamento = Boolean(status?.emAndamento);
+
+  if (!status?.configurado) return null;
+
+  async function atualizar() {
+    setDisparado(true);
+    try {
+      const anterior = status.ultima?.em;
+      await machinePayApi.sincronizarPainel();
+      // Espera terminar uma sincronizacao completa iniciada depois do clique.
+      let atual;
+      do {
+        await new Promise((r) => setTimeout(r, 3000));
+        atual = (await machinePayApi.statusPainel()).data;
+      } while (
+        atual.emAndamento ||
+        !atual.ultima ||
+        atual.ultima.em === anterior ||
+        (atual.ultima.ok && !atual.ultima.verificouVendas)
+      );
+
+      qc.setQueryData(["machinepay", "painel-status"], atual);
+      await qc.invalidateQueries({ queryKey: ["machinepay"] });
+      const u = atual.ultima;
+      toast.show(
+        u.ok
+          ? `Painel atualizado: ${u.clientesMachinePay} clientes · ${u.maquinas.off} off · ${u.maquinas.onInativas} on inativas`
+          : `Falha ao atualizar: ${u.erro}`,
+        { error: !u.ok },
+      );
+    } catch (e) {
+      toast.show(erroApi(e), { error: true });
+    } finally {
+      setDisparado(false);
+    }
+  }
+
+  const ultima = status.ultimaVerificacaoVendas || status.ultima?.em;
+  return (
+    <button
+      onClick={atualizar}
+      disabled={emAndamento || disparado}
+      title={
+        ultima
+          ? `Última verificação: ${new Date(ultima).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}. Automática todo dia às ${status.horaVerificacaoVendas}h.`
+          : `Automática todo dia às ${status.horaVerificacaoVendas}h`
+      }
+      className="btn-ghost inline-flex items-center gap-2 disabled:opacity-70"
+    >
+      <RotateCcw size={15} className={cn((emAndamento || disparado) && "animate-spin")} />
+      {emAndamento || disparado ? "Buscando na Machine Pay..." : "Atualizar"}
+    </button>
+  );
+}
+
 export default function MachinePayPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -2419,6 +2529,7 @@ export default function MachinePayPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <AtualizarPainelButton toast={toast} />
           {cobrancaAtiva && (
             <div className="flex items-center gap-1 rounded-xl glass p-1">
               <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, -1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Mês anterior">
