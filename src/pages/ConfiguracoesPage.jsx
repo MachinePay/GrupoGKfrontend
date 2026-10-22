@@ -20,12 +20,14 @@ import {
   DollarSign,
   Wallet,
   AlertTriangle,
+  Smartphone,
 } from "lucide-react";
 import api, {
   cadastrosApi,
   cotacoesApi,
   fornecedoresApi,
   machinePayApi,
+  sumupContasApi,
 } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
@@ -1379,6 +1381,246 @@ function MachinePayConfigTab() {
   );
 }
 
+/* ─────────────── SumUp ─────────────── */
+const erroApi = (error, fallback) => error?.response?.data?.message || fallback;
+
+function SumupMaquininhas({ conta }) {
+  const qc = useQueryClient();
+  const [aviso, setAviso] = useState("");
+  const chave = ["sumup-contas", conta.id, "maquininhas"];
+
+  const { data: maquininhas = [], isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: chave,
+    queryFn: () => sumupContasApi.maquininhas(conta.id).then((r) => r.data),
+    retry: false,
+  });
+
+  const esquecer = useMutation({
+    mutationFn: (readerId) => sumupContasApi.esquecerMaquininha(conta.id, readerId),
+    onSuccess: () => {
+      setAviso("Esquecida na conta. Agora no aparelho: Menu › Conexões › API › Desconectar. Ao conectar de novo, aparece o código de pareamento.");
+      qc.invalidateQueries({ queryKey: chave });
+    },
+  });
+
+  function handleEsquecer(maquininha) {
+    const ok = window.confirm(
+      `Esquecer "${maquininha.nome || maquininha.id}" na conta ${conta.nome}?\n\nDepois desconecte no aparelho: Menu › Conexões › API › Desconectar.`,
+    );
+    if (ok) {
+      setAviso("");
+      esquecer.mutate(maquininha.id);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          Maquininhas pareadas na Cloud API
+        </p>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="text-xs text-blue-500 hover:text-blue-400 disabled:opacity-50"
+        >
+          {isFetching ? "Atualizando…" : "Atualizar"}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-xs text-slate-500">Consultando a SumUp…</p>
+      ) : isError ? (
+        <p className="text-xs text-rose-500">{erroApi(error, "Falha ao consultar a SumUp.")}</p>
+      ) : !maquininhas.length ? (
+        <p className="text-xs text-slate-500">Nenhuma maquininha pareada nesta conta.</p>
+      ) : (
+        <div className="divide-y divide-slate-200 dark:divide-slate-800 rounded-lg border border-slate-200 dark:border-slate-800">
+          {maquininhas.map((m) => (
+            <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm text-slate-900 dark:text-white">
+                  {m.nome || "Maquininha"}
+                  {m.status && <span className="ml-2 text-xs text-slate-500">{m.status}</span>}
+                </p>
+                <p className="text-xs font-mono text-slate-500 break-all">
+                  {m.id}
+                  {m.serial ? ` · serial ${m.serial}` : ""}
+                  {m.modelo ? ` · ${m.modelo}` : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => handleEsquecer(m)}
+                disabled={esquecer.isPending}
+                className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-rose-500 border border-rose-500/30 hover:bg-rose-500/10 disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                Esquecer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {esquecer.isError && (
+        <p className="text-xs text-rose-500">{erroApi(esquecer.error, "Erro ao esquecer a maquininha.")}</p>
+      )}
+      {aviso && <p className="text-xs text-emerald-500">{aviso}</p>}
+    </div>
+  );
+}
+
+function SumupTab() {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ nome: "", apiKey: "" });
+  const [editando, setEditando] = useState(null);
+  const [aberta, setAberta] = useState(null);
+
+  const { data: contas = [], isLoading, isError, error } = useQuery({
+    queryKey: ["sumup-contas"],
+    queryFn: () => sumupContasApi.listar().then((r) => r.data),
+  });
+
+  const salvar = useMutation({
+    mutationFn: () =>
+      editando
+        ? sumupContasApi.atualizar(editando, form)
+        : sumupContasApi.criar(form),
+    onSuccess: () => {
+      setForm({ nome: "", apiKey: "" });
+      setEditando(null);
+      qc.invalidateQueries({ queryKey: ["sumup-contas"] });
+    },
+  });
+
+  const excluir = useMutation({
+    mutationFn: (id) => sumupContasApi.excluir(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sumup-contas"] }),
+  });
+
+  function iniciarEdicao(conta) {
+    setEditando(conta.id);
+    setForm({ nome: conta.nome, apiKey: "" });
+  }
+
+  function cancelarEdicao() {
+    setEditando(null);
+    setForm({ nome: "", apiKey: "" });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Contas SumUp</h3>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+          Guarde a API key de cada conta SumUp do grupo (duBob, CompactPay, Machine Pay…) para ver e esquecer as maquininhas pareadas nela. Uma maquininha pareada numa conta reconecta sozinha e não mostra o código de pareamento até ser esquecida lá.
+        </p>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          salvar.mutate();
+        }}
+        className="glass rounded-xl p-4 space-y-3"
+      >
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          {editando ? "Editar conta" : "Nova conta SumUp"}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Nome"
+            value={form.nome}
+            onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+            placeholder="Ex: duBob"
+          />
+          <Input
+            label={editando ? "Nova API key (vazio mantém a atual)" : "API key"}
+            type="password"
+            autoComplete="off"
+            value={form.apiKey}
+            onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
+            placeholder="sup_sk_..."
+          />
+        </div>
+        {salvar.isError && (
+          <p className="text-xs text-rose-500">{erroApi(salvar.error, "Erro ao salvar a conta.")}</p>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={salvar.isPending || !form.nome.trim() || (!editando && !form.apiKey.trim())}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
+          >
+            <Plus size={15} />
+            {salvar.isPending ? "Validando…" : editando ? "Salvar" : "Adicionar conta"}
+          </button>
+          {editando && (
+            <button
+              type="button"
+              onClick={cancelarEdicao}
+              className="px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      </form>
+
+      {isLoading ? (
+        <p className="text-sm text-slate-500 text-center">Carregando…</p>
+      ) : isError ? (
+        <p className="text-sm text-rose-500 text-center">{erroApi(error, "Erro ao carregar as contas.")}</p>
+      ) : !contas.length ? (
+        <p className="text-sm text-slate-500 text-center">Nenhuma conta SumUp cadastrada.</p>
+      ) : (
+        <div className="space-y-3">
+          {contas.map((conta) => (
+            <div key={conta.id} className="glass rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{conta.nome}</p>
+                  <p className="text-xs text-slate-500">
+                    {conta.nomeConta ? `${conta.nomeConta} · ` : ""}
+                    {conta.merchantCode || "sem merchant code"} · {conta.apiKeyMascarada}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => setAberta(aberta === conta.id ? null : conta.id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-500"
+                  >
+                    {aberta === conta.id ? "Fechar" : "Maquininhas"}
+                  </button>
+                  <button
+                    onClick={() => iniciarEdicao(conta)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
+                  >
+                    <Pencil size={13} />
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Excluir a conta "${conta.nome}" daqui? Nada muda na SumUp.`)) {
+                        excluir.mutate(conta.id);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-rose-500 border border-rose-500/30"
+                  >
+                    <Trash2 size={13} />
+                    Excluir
+                  </button>
+                </div>
+              </div>
+              {aberta === conta.id && <SumupMaquininhas conta={conta} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────── Tema ─────────────── */
 function TemaTab() {
   const { theme, toggleTheme } = useTheme();
@@ -1532,6 +1774,7 @@ const ADMIN_TABS = [
   ...TABS,
   { key: "usuarios", label: "Usuários", icon: Users, component: UsuariosTab },
   { key: "machinepay", label: "Machine Pay", icon: Wallet, component: MachinePayConfigTab },
+  { key: "sumup", label: "SumUp", icon: Smartphone, component: SumupTab },
 ];
 
 export default function ConfiguracoesPage() {
@@ -1553,6 +1796,8 @@ export default function ConfiguracoesPage() {
         return isAdmin ? <UsuariosTab /> : null;
       case "machinepay":
         return isAdmin ? <MachinePayConfigTab /> : null;
+      case "sumup":
+        return isAdmin ? <SumupTab /> : null;
       case "cotacoes":
         return <CotacoesTab />;
       case "tema":

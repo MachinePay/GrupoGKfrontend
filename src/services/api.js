@@ -227,4 +227,15 @@ export const machinePayApi = {
   cancelarWhatsapp: () => api.post("/machinepay/whatsapp/cancelar"),
 };
 
+// Contas SumUp do grupo e as maquininhas pareadas na Cloud API de cada uma.
+export const sumupContasApi = {
+  listar: () => api.get("/sumup-contas"),
+  criar: (payload) => api.post("/sumup-contas", payload),
+  atualizar: (id, payload) => api.put(`/sumup-contas/${id}`, payload),
+  excluir: (id) => api.delete(`/sumup-contas/${id}`),
+  maquininhas: (id) => api.get(`/sumup-contas/${id}/maquininhas`),
+  esquecerMaquininha: (id, readerId) =>
+    api.delete(`/sumup-contas/${id}/maquininhas/${encodeURIComponent(readerId)}`),
+};
+
 export default api;
