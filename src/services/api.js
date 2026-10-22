@@ -207,6 +207,8 @@ export const machinePayApi = {
   estornarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/estornar`),
   cancelarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/cancelar`),
   removerCobranca: (id) => api.delete(`/machinepay/cobrancas/${id}`),
+  previaApagarCobrancas: () => api.get("/machinepay/cobrancas/apagar/previa"),
+  apagarCobrancas: (payload) => api.post("/machinepay/cobrancas/apagar", payload),
   gerarPix: (id, novo = false) =>
     api.post(`/machinepay/cobrancas/${id}/pix`, { novo }),
   verificarPix: (id) => api.post(`/machinepay/cobrancas/${id}/pix/verificar`),

@@ -18,11 +18,14 @@ import {
   ExternalLink,
   Store,
   DollarSign,
+  Wallet,
+  AlertTriangle,
 } from "lucide-react";
 import api, {
   cadastrosApi,
   cotacoesApi,
   fornecedoresApi,
+  machinePayApi,
 } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
@@ -1235,6 +1238,147 @@ function CotacoesTab() {
   );
 }
 
+/* ─────────────── Machine Pay (ADMIN) ─────────────── */
+const NOMES_MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+function rotuloMes(competencia) {
+  const [ano, mes] = competencia.split("-").map(Number);
+  return `${NOMES_MESES[mes - 1]} ${ano}`;
+}
+
+function MachinePayConfigTab() {
+  const qc = useQueryClient();
+  const [competencia, setCompetencia] = useState("");
+  const [incluirPagas, setIncluirPagas] = useState(false);
+  const [confirmacao, setConfirmacao] = useState("");
+  const [resultado, setResultado] = useState(null);
+
+  const { data: meses = [], isLoading } = useQuery({
+    queryKey: ["machinepay", "apagar", "previa"],
+    queryFn: () => machinePayApi.previaApagarCobrancas().then((r) => r.data),
+  });
+
+  // Soma do que sera apagado com a escolha atual.
+  const escolhidos = competencia === "TODAS" ? meses : meses.filter((m) => m.competencia === competencia);
+  const alvo = escolhidos.reduce(
+    (a, m) => ({
+      total: a.total + m.pendentes + m.canceladas + (incluirPagas ? m.pagas : 0),
+      pagas: a.pagas + m.pagas,
+    }),
+    { total: 0, pagas: 0 },
+  );
+
+  const apagar = useMutation({
+    mutationFn: () =>
+      machinePayApi.apagarCobrancas({ competencia, incluirPagas, confirmacao }).then((r) => r.data),
+    onSuccess: (r) => {
+      setResultado(r);
+      setConfirmacao("");
+      qc.invalidateQueries({ queryKey: ["machinepay"] });
+      qc.invalidateQueries({ queryKey: ["movimentacoes"] });
+      qc.invalidateQueries({ queryKey: ["contas"] });
+    },
+  });
+
+  const podeApagar = competencia && alvo.total > 0 && confirmacao.trim().toUpperCase() === "APAGAR";
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Apagar cobranças do Machine Pay</h3>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+          Remove as cobranças geradas de um mês (ou de todos). Os clientes e as máquinas não são apagados, e as cobranças podem ser geradas de novo em Machine Pay › Gerar cobranças.
+        </p>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-4">
+        {isLoading ? (
+          <p className="text-sm text-slate-500 text-center">Carregando…</p>
+        ) : !meses.length ? (
+          <p className="text-sm text-slate-500 text-center">Não há cobranças geradas.</p>
+        ) : (
+          <>
+            <Select
+              label="Mês das cobranças"
+              value={competencia}
+              onChange={(e) => {
+                setCompetencia(e.target.value);
+                setResultado(null);
+              }}
+              options={[
+                { value: "", label: "Escolha o mês" },
+                ...meses.map((m) => ({
+                  value: m.competencia,
+                  label: `${rotuloMes(m.competencia)} · ${m.total} cobrança(s) · ${formatCurrency(m.valor)}`,
+                })),
+                { value: "TODAS", label: `Todos os meses · ${meses.reduce((a, m) => a + m.total, 0)} cobrança(s)` },
+              ]}
+            />
+
+            {competencia && (
+              <>
+                <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={incluirPagas}
+                    onChange={(e) => setIncluirPagas(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Apagar também as <b>pagas</b> ({alvo.pagas})
+                    <span className="block text-xs text-slate-500">
+                      O lançamento de entrada no financeiro é removido e o saldo da conta é ajustado. Sem marcar, as pagas ficam guardadas.
+                    </span>
+                  </span>
+                </label>
+
+                <div className="flex items-start gap-2 rounded-lg p-3 border border-rose-500/30 bg-rose-500/5 text-xs text-slate-600 dark:text-slate-400">
+                  <AlertTriangle size={15} className="text-rose-500 shrink-0 mt-0.5" />
+                  <span>
+                    Vão ser apagadas <b className="text-rose-500">{alvo.total} cobrança(s)</b>
+                    {competencia === "TODAS" ? " de todos os meses" : ` de ${rotuloMes(competencia)}`}. Os Pix SumUp em aberto delas são cancelados. Não dá para desfazer.
+                  </span>
+                </div>
+
+                <Input
+                  label='Digite APAGAR para confirmar'
+                  value={confirmacao}
+                  onChange={(e) => setConfirmacao(e.target.value)}
+                  placeholder="APAGAR"
+                  autoComplete="off"
+                />
+              </>
+            )}
+          </>
+        )}
+
+        {apagar.isError && (
+          <p className="text-xs text-rose-500">
+            {apagar.error?.response?.data?.message || "Erro ao apagar cobranças."}
+          </p>
+        )}
+        {resultado && (
+          <p className="text-xs text-emerald-500">
+            {resultado.apagadas} cobrança(s) apagada(s)
+            {resultado.lancamentosRemovidos ? ` · ${resultado.lancamentosRemovidos} lançamento(s) removido(s) do financeiro` : ""}.
+          </p>
+        )}
+
+        {meses.length > 0 && (
+          <button
+            onClick={() => apagar.mutate()}
+            disabled={!podeApagar || apagar.isPending}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50"
+          >
+            <Trash2 size={15} />
+            {apagar.isPending ? "Apagando…" : `Apagar ${alvo.total || ""} cobrança(s)`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Tema ─────────────── */
 function TemaTab() {
   const { theme, toggleTheme } = useTheme();
@@ -1387,6 +1531,7 @@ const TABS = [
 const ADMIN_TABS = [
   ...TABS,
   { key: "usuarios", label: "Usuários", icon: Users, component: UsuariosTab },
+  { key: "machinepay", label: "Machine Pay", icon: Wallet, component: MachinePayConfigTab },
 ];
 
 export default function ConfiguracoesPage() {
@@ -1406,6 +1551,8 @@ export default function ConfiguracoesPage() {
         return <FornecedoresTab />;
       case "usuarios":
         return isAdmin ? <UsuariosTab /> : null;
+      case "machinepay":
+        return isAdmin ? <MachinePayConfigTab /> : null;
       case "cotacoes":
         return <CotacoesTab />;
       case "tema":
