@@ -29,6 +29,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Send,
   Sparkles,
   Trash2,
   Upload,
@@ -1598,6 +1599,161 @@ function PixSumupModal({ cobranca, onClose, onPago, toast }) {
   );
 }
 
+// Telefone valido para envio automatico (DDD + numero, com ou sem 55).
+function telefoneValido(tel) {
+  const d = String(tel || "").replace(/\D/g, "").replace(/^0+/, "");
+  return d.length === 10 || d.length === 11 || /^55\d{10,11}$/.test(d);
+}
+
+const HORAS_REENVIO = 12;
+
+function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, onClose, onDone }) {
+  const [reenviar, setReenviar] = useState(false);
+  const [limite] = useState(() => Date.now() - HORAS_REENVIO * 60 * 60 * 1000);
+
+  const semTelefone = cobrancas.filter((c) => !telefoneValido(c.cliente.telefone));
+  const naFila = cobrancas.filter(
+    (c) => telefoneValido(c.cliente.telefone) && (c.whatsappStatus === "FILA" || c.whatsappStatus === "ENVIANDO"),
+  );
+  const recentes = cobrancas.filter(
+    (c) =>
+      telefoneValido(c.cliente.telefone) &&
+      !naFila.includes(c) &&
+      c.whatsappEnviadoEm &&
+      new Date(c.whatsappEnviadoEm).getTime() > limite,
+  );
+  const vaoSair = cobrancas.length - semTelefone.length - naFila.length - (reenviar ? 0 : recentes.length);
+  const minutos = Math.max(1, Math.round((vaoSair * intervaloSegundos) / 60));
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      machinePayApi.enviarWhatsapp(cobrancas.map((c) => c.id), reenviar).then((r) => r.data),
+    onSuccess: onDone,
+  });
+
+  return (
+    <Modal title="Enviar cobranças no WhatsApp" subtitle={`${cobrancas.length} selecionada(s)`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="rounded-xl p-4 border border-emerald-500/30 bg-emerald-500/5">
+          <p className="text-2xl font-bold text-white tabular-nums">{vaoSair}</p>
+          <p className="text-sm text-slate-400">
+            {vaoSair === 1 ? "cliente vai receber" : "clientes vão receber"} a mensagem
+            {sumupAtivo ? " e o Pix exclusivo da cobrança" : " com a chave Pix CNPJ"}
+            {vaoSair > 0 && <>, uma por vez, em cerca de <b>{minutos} min</b></>}.
+          </p>
+        </div>
+
+        {!sumupAtivo && (
+          <p className="text-xs text-amber-600 dark:text-amber-300">
+            A SumUp está desativada: a mensagem vai com a chave CNPJ e a baixa não será automática. Ative a SumUp em Integrações para mandar Pix com baixa automática.
+          </p>
+        )}
+
+        {(semTelefone.length > 0 || naFila.length > 0 || recentes.length > 0) && (
+          <div className="space-y-2 text-xs text-slate-400">
+            {semTelefone.length > 0 && (
+              <p>
+                <b className="text-red-500">{semTelefone.length} sem telefone válido</b> (não serão enviadas):{" "}
+                {semTelefone.slice(0, 5).map((c) => c.cliente.nome).join(", ")}
+                {semTelefone.length > 5 && "..."}
+              </p>
+            )}
+            {naFila.length > 0 && <p><b>{naFila.length} já estão na fila</b> e não serão duplicadas.</p>}
+            {recentes.length > 0 && (
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={reenviar} onChange={(e) => setReenviar(e.target.checked)} className="mt-0.5" />
+                <span>
+                  <b>{recentes.length} já receberam</b> nas últimas {HORAS_REENVIO}h. Marque para enviar de novo.
+                </span>
+              </label>
+            )}
+          </div>
+        )}
+
+        <p className="text-xs text-slate-500">
+          Pode fechar esta tela: o envio continua no servidor. Quem pagar antes da vez não recebe a mensagem.
+        </p>
+
+        {mutation.isError && <p className="text-sm text-red-500">{erroApi(mutation.error)}</p>}
+
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost">Cancelar</button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || vaoSair <= 0}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-[#fff] bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {mutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            Enviar para {vaoSair}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Barra de progresso da fila de envio (aparece enquanto ha mensagens saindo).
+function FilaWhatsappBanner({ fila, onCancelar }) {
+  if (!fila || (!fila.fila && !fila.enviando)) return null;
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 border",
+        fila.pausa ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/30 bg-emerald-500/5",
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span className={cn("p-2 rounded-xl", fila.pausa ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/15 text-emerald-600")}>
+          {fila.pausa ? <AlertTriangle size={16} /> : <Loader2 size={16} className="animate-spin" />}
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-white">
+            {fila.pausa ? "Envio pausado" : "Enviando cobranças no WhatsApp"}
+            {" · "}
+            {fila.fila + (fila.enviando ? 1 : 0)} restante(s)
+          </p>
+          <p className="text-xs text-slate-500">
+            {fila.pausa
+              ? fila.pausa
+              : fila.enviando
+                ? `Agora: ${fila.enviando.nome}`
+                : `Próxima em instantes (intervalo de ~${fila.intervaloSegundos}s entre clientes)`}
+          </p>
+        </div>
+      </div>
+      {fila.fila > 0 && (
+        <button onClick={onCancelar} className="btn-ghost py-1! text-xs! inline-flex items-center gap-1">
+          <X size={13} /> Parar envio
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StatusWhatsapp({ cobranca }) {
+  const s = cobranca.whatsappStatus;
+  if (!s) return null;
+  if (s === "ENVIADO") {
+    return (
+      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 inline-flex items-center gap-1" title="Cobrança enviada no WhatsApp">
+        <MessageCircle size={11} /> enviada {cobranca.whatsappEnviadoEm && new Date(cobranca.whatsappEnviadoEm).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+      </p>
+    );
+  }
+  if (s === "ERRO") {
+    return (
+      <p className="text-[11px] text-red-500 mt-0.5 inline-flex items-center gap-1 max-w-[200px] truncate" title={cobranca.whatsappErro || "Falha no envio"}>
+        <MessageCircle size={11} /> falhou no WhatsApp
+      </p>
+    );
+  }
+  return (
+    <p className="text-[11px] text-slate-500 mt-0.5 inline-flex items-center gap-1">
+      <Clock size={11} /> {s === "ENVIANDO" ? "enviando agora" : "na fila do WhatsApp"}
+    </p>
+  );
+}
+
 // ─── Aba: Cobranças ─────────────────────────────────────────────────────────
 
 function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, onImportar }) {
@@ -1617,6 +1773,27 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
     queryFn: () => machinePayApi.sumupConfig().then((r) => r.data),
   });
   const sumupAtivo = Boolean(sumup?.ativo);
+  const [enviarWa, setEnviarWa] = useState(null);
+
+  const { data: whatsapp } = useQuery({
+    queryKey: ["machinepay", "whatsapp"],
+    queryFn: () => machinePayApi.whatsappConfig().then((r) => r.data),
+  });
+  const whatsappAtivo = Boolean(whatsapp?.ativo);
+
+  // Acompanha a fila enquanto houver envio; a lista atualiza junto.
+  const { data: filaWa } = useQuery({
+    queryKey: ["machinepay", "whatsapp", "fila"],
+    queryFn: () => machinePayApi.filaWhatsapp().then((r) => r.data),
+    enabled: whatsappAtivo,
+    refetchInterval: (q) => (q.state.data?.fila || q.state.data?.enviando ? 4000 : false),
+  });
+  const filaAtiva = Boolean(filaWa?.fila || filaWa?.enviando);
+  useEffect(() => {
+    if (!filaAtiva) return undefined;
+    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["machinepay", "competencia"] }), 8000);
+    return () => clearInterval(id);
+  }, [filaAtiva, qc]);
 
   const { data: evolucao = [] } = useQuery({
     queryKey: ["machinepay", "evolucao"],
@@ -1731,6 +1908,22 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
 
   return (
     <div className="space-y-5">
+      <FilaWhatsappBanner
+        fila={filaWa}
+        onCancelar={() =>
+          setConfirmar({
+            title: "Parar o envio?",
+            message: "As cobranças que ainda não saíram voltam a ficar sem envio. As que já foram enviadas não mudam.",
+            confirmLabel: "Parar envio",
+            danger: true,
+            onConfirm: async () => {
+              const r = await machinePayApi.cancelarWhatsapp();
+              qc.invalidateQueries({ queryKey: ["machinepay"] });
+              toast.show(`${r.data.canceladas} envio(s) cancelado(s)`);
+            },
+          })
+        }
+      />
       {dados?.clientesSemCobranca > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 border border-blue-500/30 bg-blue-500/5">
           <div className="flex items-center gap-3">
@@ -1843,6 +2036,14 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
               </span>
               <div className="flex gap-2">
                 <button onClick={() => setSelecionadas(new Set())} className="btn-ghost py-1! text-xs!">Limpar</button>
+                {whatsappAtivo && (
+                  <button
+                    onClick={() => setEnviarWa(cobrancas.filter((c) => selecionadas.has(c.id)))}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-[#fff] bg-green-600 hover:bg-green-500"
+                  >
+                    <Send size={13} /> Enviar no WhatsApp
+                  </button>
+                )}
                 <button
                   onClick={() => setReceber(cobrancas.filter((c) => selecionadas.has(c.id)))}
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-[#fff] bg-emerald-600 hover:bg-emerald-500"
@@ -1909,6 +2110,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                           </p>
                         )}
                         {c.observacoes && <p className="text-[11px] text-slate-500 mt-0.5 max-w-[180px] truncate" title={c.observacoes}>{c.observacoes}</p>}
+                        {aberta && <StatusWhatsapp cobranca={c} />}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-end gap-1">
@@ -2053,6 +2255,25 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
       )}
       {confirmar && <ConfirmModal {...confirmar} onClose={() => setConfirmar(null)} />}
       {historico && <HistoricoModal clienteId={historico} onClose={() => setHistorico(null)} />}
+      {enviarWa && (
+        <EnviarWhatsappModal
+          cobrancas={enviarWa}
+          sumupAtivo={sumupAtivo}
+          intervaloSegundos={whatsapp?.intervaloSegundos ?? 20}
+          onClose={() => setEnviarWa(null)}
+          onDone={(r) => {
+            setEnviarWa(null);
+            setSelecionadas(new Set());
+            invalidar();
+            toast.show(
+              r.enfileiradas
+                ? `${r.enfileiradas} cobrança(s) na fila do WhatsApp${r.ignoradas.length ? ` · ${r.ignoradas.length} ignorada(s)` : ""}`
+                : "Nenhuma cobrança entrou na fila",
+              r.enfileiradas ? undefined : { error: true },
+            );
+          }}
+        />
+      )}
       {pixCobranca && (
         <PixSumupModal
           cobranca={pixCobranca}
@@ -2922,6 +3143,195 @@ function SumupForm({ config, contas, toast }) {
   );
 }
 
+// ─── Integração: WhatsApp (Evolution API) ───────────────────────────────────
+
+const ESTADO_WHATSAPP = {
+  open: { label: "Conectado", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  connecting: { label: "Aguardando leitura do QR", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  close: { label: "Desconectado", cls: "bg-red-500/10 text-red-600 dark:text-red-300 border-red-500/30" },
+  inexistente: { label: "Instância ainda não criada", cls: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30" },
+  erro: { label: "Sem resposta da Evolution API", cls: "bg-red-500/10 text-red-600 dark:text-red-300 border-red-500/30" },
+};
+
+function WhatsappCard({ toast }) {
+  const { data: config, isLoading, error } = useQuery({
+    queryKey: ["machinepay", "whatsapp"],
+    queryFn: () => machinePayApi.whatsappConfig().then((r) => r.data),
+  });
+
+  if (isLoading || !config) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-slate-500 py-10 justify-center">
+        {error ? <span className="text-red-500">{erroApi(error)}</span> : <><Loader2 size={16} className="animate-spin" /> Carregando WhatsApp...</>}
+      </div>
+    );
+  }
+
+  return <WhatsappForm config={config} toast={toast} />;
+}
+
+function WhatsappForm({ config, toast }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState(() => ({
+    ativo: config.ativo,
+    evolutionUrl: config.evolutionUrl || "",
+    apiKey: "",
+    instancia: config.instancia || "machinepay",
+    intervaloSegundos: config.intervaloSegundos,
+  }));
+  const [qrGerado, setQr] = useState(null);
+
+  const conexao = useQuery({
+    queryKey: ["machinepay", "whatsapp", "conexao"],
+    queryFn: () => machinePayApi.whatsappConexao().then((r) => r.data),
+    // Enquanto o QR esta na tela, confere a cada 3s se o numero conectou.
+    refetchInterval: (q) => (qrGerado && q.state.data?.estado !== "open" ? 3000 : false),
+  });
+  const estado = conexao.data?.estado;
+  const conectado = estado === "open";
+  // Conectou: o QR some sozinho e o selo mostra "Conectado".
+  const qr = conectado ? null : qrGerado;
+
+  const set = (campo) => (e) =>
+    setForm((f) => ({ ...f, [campo]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+
+  const salvar = useMutation({
+    mutationFn: () =>
+      machinePayApi
+        .salvarWhatsappConfig({
+          ...form,
+          apiKey: form.apiKey.trim() || undefined,
+          intervaloSegundos: Number(form.intervaloSegundos),
+        })
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["machinepay", "whatsapp"], data);
+      qc.invalidateQueries({ queryKey: ["machinepay", "whatsapp", "conexao"] });
+      setForm((f) => ({ ...f, apiKey: "" }));
+      toast.show("Configuração do WhatsApp salva");
+    },
+    onError: (e) => toast.show(erroApi(e), { error: true }),
+  });
+
+  const conectar = useMutation({
+    mutationFn: () => machinePayApi.conectarWhatsapp().then((r) => r.data),
+    onSuccess: (data) => {
+      if (data.estado === "open") {
+        toast.show("Este número já está conectado");
+        qc.invalidateQueries({ queryKey: ["machinepay", "whatsapp", "conexao"] });
+      } else {
+        setQr(data);
+      }
+    },
+    onError: (e) => toast.show(erroApi(e), { error: true }),
+  });
+
+  const estadoInfo = ESTADO_WHATSAPP[estado];
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="glass rounded-2xl p-5 card-shadow space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-white">WhatsApp</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Envia as cobranças selecionadas sozinho, uma por vez, com a mensagem e o Pix de cada cliente.
+            </p>
+          </div>
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-white cursor-pointer shrink-0">
+            <input type="checkbox" checked={form.ativo} onChange={set("ativo")} />
+            {form.ativo ? "Ativo" : "Desativado"}
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {conexao.isLoading ? (
+            <span className="text-xs text-slate-500">Verificando conexão...</span>
+          ) : conexao.data?.configurado ? (
+            <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border", estadoInfo?.cls ?? ESTADO_WHATSAPP.erro.cls)}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current" /> {estadoInfo?.label ?? estado}
+            </span>
+          ) : (
+            <span className="text-xs text-slate-500">Preencha e salve os dados abaixo para conectar o número.</span>
+          )}
+          {conexao.data?.erro && <span className="text-xs text-red-500">{conexao.data.erro}</span>}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo label="URL da Evolution API" className="sm:col-span-2" hint="Endereço onde a sua Evolution API está rodando.">
+            <input value={form.evolutionUrl} onChange={set("evolutionUrl")} placeholder="https://evolution.seudominio.com.br" className="input-base" />
+          </Campo>
+          <Campo
+            label="Chave (apikey)"
+            hint={config.apiKeyConfigurada ? `Chave salva: ${config.apiKeyMascarada}. Deixe em branco para manter.` : "A AUTHENTICATION_API_KEY da Evolution. Fica guardada só no servidor."}
+          >
+            <input type="password" autoComplete="off" value={form.apiKey} onChange={set("apiKey")} placeholder={config.apiKeyConfigurada ? "••••••••" : "apikey"} className="input-base font-mono" />
+          </Campo>
+          <Campo label="Nome da instância" hint="Se ainda não existir, é criada ao conectar.">
+            <input value={form.instancia} onChange={set("instancia")} placeholder="machinepay" className="input-base font-mono" />
+          </Campo>
+          <Campo label="Intervalo entre clientes (segundos)" hint="Varia ±30% sozinho. Quanto maior, menor o risco de bloqueio do número.">
+            <input type="number" min={8} max={600} value={form.intervaloSegundos} onChange={set("intervaloSegundos")} className="input-base" />
+          </Campo>
+        </div>
+
+        {qr && (
+          <div className="flex flex-col items-center gap-2 rounded-xl p-4 border border-[var(--border-color)]">
+            {qr.qrBase64 ? (
+              <img src={qr.qrBase64} alt="QR Code para conectar o WhatsApp" className="w-56 h-56 rounded-xl bg-[#fff] p-2" />
+            ) : (
+              <p className="text-sm text-slate-400">A Evolution não devolveu o QR Code. Tente de novo.</p>
+            )}
+            {qr.pairingCode && <p className="text-sm text-slate-300">Ou use o código: <b className="font-mono">{qr.pairingCode}</b></p>}
+            <p className="text-xs text-slate-500 text-center">
+              No celular: WhatsApp › Aparelhos conectados › Conectar aparelho, e leia o QR.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            onClick={() => conectar.mutate()}
+            disabled={conectar.isPending || !conexao.data?.configurado}
+            title={conexao.data?.configurado ? undefined : "Salve URL, chave e instância antes"}
+            className="btn-ghost inline-flex items-center gap-2"
+          >
+            {conectar.isPending ? <Loader2 size={14} className="animate-spin" /> : <QrCode size={14} />}
+            {conectado ? "Verificar conexão" : qr ? "Gerar novo QR" : "Conectar número"}
+          </button>
+          <button onClick={() => salvar.mutate()} disabled={salvar.isPending} className="btn-primary inline-flex items-center gap-2">
+            {salvar.isPending && <Loader2 size={14} className="animate-spin" />}
+            Salvar
+          </button>
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl p-5 card-shadow space-y-3 text-sm text-slate-400 h-fit">
+        <h3 className="text-sm font-semibold text-white">Como enviar</h3>
+        <ol className="list-decimal pl-4 space-y-2 text-xs">
+          <li>Salve a URL, a chave e a instância, e clique em <b>Conectar número</b> para ler o QR no celular.</li>
+          <li>Em <b>Cobranças do mês</b>, filtre (em aberto, atrasadas, dia de vencimento, busca) e marque quem vai receber. O "selecionar todos" pega só o que está no filtro.</li>
+          <li>Clique em <b>Enviar no WhatsApp</b>, confira o resumo e confirme.</li>
+          <li>O sistema manda uma por vez: a mensagem e, em seguida, o Pix copia e cola da cobrança.</li>
+          <li>Quem pagar recebe a baixa na hora, e quem pagar antes da vez não recebe a mensagem.</li>
+        </ol>
+        <p className="text-xs">
+          A Evolution API não é oficial do WhatsApp. Use um intervalo folgado e mande só para clientes, para não ter o número bloqueado.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function IntegracoesTab({ contas, toast }) {
+  return (
+    <div className="space-y-8">
+      <SumupTab contas={contas} toast={toast} />
+      <WhatsappCard toast={toast} />
+    </div>
+  );
+}
+
 export default function MachinePayPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -2948,20 +3358,20 @@ export default function MachinePayPage() {
   const { data: contas = [] } = useQuery({
     queryKey: ["contas"],
     queryFn: () => cadastrosApi.listarContas().then((r) => r.data),
-    enabled: cobrancaAtiva || abaEscolhida === "sumup",
+    enabled: cobrancaAtiva || abaEscolhida === "integracoes",
   });
 
   const clientes = clientesQuery.data ?? [];
   const devendo = clientes.filter((c) => c.valorAtrasado > 0).length;
   const erro = clientesQuery.error || competenciaQuery.error || configQuery.error;
-  // Em modo cadastro so existem a lista de clientes e a configuracao da SumUp.
-  const aba = cobrancaAtiva || abaEscolhida === "sumup" ? abaEscolhida : "clientes";
+  // Em modo cadastro so existem a lista de clientes e as integracoes.
+  const aba = cobrancaAtiva || abaEscolhida === "integracoes" ? abaEscolhida : "clientes";
 
   const abas = [
     cobrancaAtiva && { key: "cobrancas", label: "Cobranças do mês", icon: CircleDollarSign },
     { key: "clientes", label: "Clientes", icon: Users, count: clientes.length },
     cobrancaAtiva && { key: "inadimplencia", label: "Inadimplência", icon: AlertTriangle, count: devendo || undefined },
-    { key: "sumup", label: "SumUp", icon: KeyRound },
+    { key: "integracoes", label: "Integrações", icon: KeyRound },
   ].filter(Boolean);
 
   function alternarCobranca(ativar) {
@@ -3103,7 +3513,7 @@ export default function MachinePayPage() {
         />
       )}
       {aba === "inadimplencia" && <InadimplenciaTab clientes={clientes} toast={toast} />}
-      {aba === "sumup" && <SumupTab contas={contas} toast={toast} />}
+      {aba === "integracoes" && <IntegracoesTab contas={contas} toast={toast} />}
 
       {importar && (
         <ImportarModal

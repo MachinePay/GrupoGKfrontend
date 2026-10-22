@@ -213,6 +213,15 @@ export const machinePayApi = {
   sumupConfig: () => api.get("/machinepay/sumup/config"),
   salvarSumupConfig: (payload) => api.put("/machinepay/sumup/config", payload),
   testarSumup: () => api.post("/machinepay/sumup/testar"),
+  whatsappConfig: () => api.get("/machinepay/whatsapp/config"),
+  salvarWhatsappConfig: (payload) =>
+    api.put("/machinepay/whatsapp/config", payload),
+  whatsappConexao: () => api.get("/machinepay/whatsapp/conexao"),
+  conectarWhatsapp: () => api.post("/machinepay/whatsapp/conectar"),
+  filaWhatsapp: () => api.get("/machinepay/whatsapp/fila"),
+  enviarWhatsapp: (ids, reenviar = false) =>
+    api.post("/machinepay/whatsapp/enviar", { ids, reenviar }),
+  cancelarWhatsapp: () => api.post("/machinepay/whatsapp/cancelar"),
 };
 
 export default api;
