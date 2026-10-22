@@ -70,11 +70,13 @@ const MESES = [
   "Dezembro",
 ];
 const PRESETS_VALOR = [30, 35, 40, 49, 60, 65];
+const PRESETS_PARCERIA = [0, 10, 20, 30, 40];
 const FORMAS_PAGAMENTO = ["PIX", "Boleto", "Transferência", "Dinheiro", "Cartão"];
 const TIPOS_MAQUINA = {
   PROPRIA: { label: "Próprias", campo: "maquinasProprias" },
   PLANO36: { label: "Plano 36", campo: "maquinasPlano36" },
   OFF: { label: "Off", campo: "maquinasOff" },
+  PARCERIA: { label: "Parceria", campo: "maquinasParceria" },
 };
 
 function competenciaAtual() {
@@ -152,7 +154,8 @@ function calcularMensal(c) {
   }
   return (
     (Number(c.maquinasProprias) || 0) * (Number(c.valorMensalidade) || 0) +
-    (Number(c.maquinasPlano36) || 0) * (Number(c.valorMensalidade36) || 0)
+    (Number(c.maquinasPlano36) || 0) * (Number(c.valorMensalidade36) || 0) +
+    (Number(c.maquinasParceria) || 0) * (Number(c.valorMensalidadeParceria) || 0)
   );
 }
 
@@ -463,11 +466,14 @@ const CLIENTE_VAZIO = {
   maquinasProprias: 0,
   maquinasPlano36: 0,
   maquinasOff: 0,
+  maquinasParceria: 0,
   valorMensalidade: 40,
   valorMensalidade36: 65,
+  valorMensalidadeParceria: 0,
   valorFixo: "",
   status: "ATIVO",
   observacoes: "",
+  agrupadoComId: "",
 };
 
 function NumberStepper({ value, onChange, min = 0 }) {
@@ -499,7 +505,7 @@ function NumberStepper({ value, onChange, min = 0 }) {
   );
 }
 
-function ValorPresets({ value, onChange }) {
+function ValorPresets({ value, onChange, presets = PRESETS_VALOR }) {
   return (
     <div className="space-y-1.5">
       <div className="relative">
@@ -516,7 +522,7 @@ function ValorPresets({ value, onChange }) {
         />
       </div>
       <div className="flex flex-wrap gap-1">
-        {PRESETS_VALOR.map((v) => (
+        {presets.map((v) => (
           <button
             key={v}
             type="button"
@@ -536,7 +542,7 @@ function ValorPresets({ value, onChange }) {
   );
 }
 
-function ClienteModal({ cliente, onClose, onSaved }) {
+function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
   const [form, setForm] = useState(() =>
     cliente
       ? {
@@ -555,6 +561,16 @@ function ClienteModal({ cliente, onClose, onSaved }) {
   });
   const valorCombinado = modo === "combinado";
   const set = (campo) => (valor) => setForm((f) => ({ ...f, [campo]: valor }));
+  // Marcar parceria tira das proprias (sao as mesmas maquinas ligadas no painel).
+  const setParceria = (valor) =>
+    setForm((f) => {
+      const delta = (Number(valor) || 0) - (Number(f.maquinasParceria) || 0);
+      return {
+        ...f,
+        maquinasParceria: valor,
+        maquinasProprias: Math.max(0, (Number(f.maquinasProprias) || 0) - delta),
+      };
+    });
 
   const mutation = useMutation({
     mutationFn: (payload) =>
@@ -564,8 +580,12 @@ function ClienteModal({ cliente, onClose, onSaved }) {
     onSuccess: (res) => onSaved(res.data, !cliente),
   });
 
+  const parceria = Number(form.maquinasParceria) || 0;
+  const parceriaCobrada = parceria > 0 && Number(form.valorMensalidadeParceria) > 0;
   const totalMaquinas =
-    (Number(form.maquinasProprias) || 0) + (Number(form.maquinasPlano36) || 0);
+    (Number(form.maquinasProprias) || 0) +
+    (Number(form.maquinasPlano36) || 0) +
+    (parceriaCobrada ? parceria : 0);
   const mensal = calcularMensal({
     ...form,
     valorFixo: valorCombinado ? form.valorFixo : null,
@@ -583,14 +603,23 @@ function ClienteModal({ cliente, onClose, onSaved }) {
       maquinasProprias: Number(form.maquinasProprias) || 0,
       maquinasPlano36: Number(form.maquinasPlano36) || 0,
       maquinasOff: Number(form.maquinasOff) || 0,
+      maquinasParceria: parceria,
       valorMensalidade: Number(form.valorMensalidade) || 0,
       valorMensalidade36: Number(form.valorMensalidade36) || 0,
+      valorMensalidadeParceria: Number(form.valorMensalidadeParceria) || 0,
       valorFixo: valorCombinado && form.valorFixo !== "" ? Number(form.valorFixo) : null,
       semMensalidade: modo === "sem",
       status: form.status,
       observacoes: form.observacoes,
+      agrupadoComId: form.agrupadoComId ? Number(form.agrupadoComId) : null,
     });
   }
+
+  // Quem ja e responsavel por outros nao pode ser agrupado (um nivel so).
+  const dependentes = cliente ? clientes.filter((c) => c.agrupadoComId === cliente.id) : [];
+  const opcoesResponsavel = clientes
+    .filter((c) => c.id !== cliente?.id && !c.agrupadoComId)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
     <Modal
@@ -626,6 +655,35 @@ function ClienteModal({ cliente, onClose, onSaved }) {
               className="input-base"
             />
           </Campo>
+          {dependentes.length > 0 ? (
+            <div className="sm:col-span-2 rounded-lg px-3 py-2 text-xs border border-violet-500/30 bg-violet-500/5 text-slate-400">
+              <b className="text-violet-600 dark:text-violet-300">Responsável pela cobrança unificada</b> de:{" "}
+              {dependentes.map((d) => d.nome).join(", ")}. Para mudar, edite esses clientes.
+            </div>
+          ) : (
+            <Campo
+              label="Cobrar junto com"
+              className="sm:col-span-2"
+              hint={
+                form.agrupadoComId
+                  ? "Este cliente não gera cobrança própria: entra na cobrança do responsável, com um Pix só e a mensagem para o telefone dele."
+                  : "Escolha outro cliente para juntar as cobranças dos dois numa só."
+              }
+            >
+              <select
+                value={form.agrupadoComId}
+                onChange={(e) => set("agrupadoComId")(e.target.value)}
+                className="input-base"
+              >
+                <option value="">Cobrança própria (não juntar)</option>
+                {opcoesResponsavel.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}{c.telefone ? ` · ${formatarTelefone(c.telefone)}` : ""}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          )}
         </div>
 
         <div className="rounded-xl p-4 space-y-4" style={{ background: "var(--input-bg)" }}>
@@ -644,12 +702,15 @@ function ClienteModal({ cliente, onClose, onSaved }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Campo label="Máquinas próprias">
               <NumberStepper value={form.maquinasProprias} onChange={set("maquinasProprias")} />
             </Campo>
             <Campo label="Máquinas plano 36">
               <NumberStepper value={form.maquinasPlano36} onChange={set("maquinasPlano36")} />
+            </Campo>
+            <Campo label="Máquinas parceria" hint="Saem das próprias e a sincronização mantém">
+              <NumberStepper value={form.maquinasParceria} onChange={setParceria} />
             </Campo>
             <Campo label="Máquinas off" hint="Paradas / sem uso (não altera o valor)">
               <NumberStepper value={form.maquinasOff} onChange={set("maquinasOff")} />
@@ -668,19 +729,29 @@ function ClienteModal({ cliente, onClose, onSaved }) {
               <ValorPresets value={form.valorFixo} onChange={set("valorFixo")} />
             </Campo>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={cn("grid grid-cols-1 gap-3", parceria > 0 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
               <Campo label="Valor por máquina própria">
                 <ValorPresets value={form.valorMensalidade} onChange={set("valorMensalidade")} />
               </Campo>
               <Campo label="Valor por máquina plano 36">
                 <ValorPresets value={form.valorMensalidade36} onChange={set("valorMensalidade36")} />
               </Campo>
+              {parceria > 0 && (
+                <Campo label="Valor por máquina parceria" hint="0 = parceria sem cobrança">
+                  <ValorPresets
+                    value={form.valorMensalidadeParceria}
+                    onChange={set("valorMensalidadeParceria")}
+                    presets={PRESETS_PARCERIA}
+                  />
+                </Campo>
+              )}
             </div>
           )}
 
           <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-blue-500/10 border border-blue-500/20">
             <span className="text-xs text-slate-400">
               {totalMaquinas} máquina(s) cobradas
+              {parceria > 0 && !parceriaCobrada && ` · ${parceria} parceria sem cobrança`}
               {Number(form.maquinasOff) > 0 && ` · ${form.maquinasOff} off`}
             </span>
             <span className="text-lg font-bold text-blue-600 dark:text-blue-300 tabular-nums">
@@ -1376,8 +1447,20 @@ const MENSAGEM_RODAPE =
   "Agradecemos pela parceria! Estamos à disposição para ajudar.\n\n" +
   "Equipe Financeira | MachinePay";
 
+// Detalhe dos clientes quando a cobranca junta varios (vazio se for um so).
+function detalheItens(itens) {
+  if (!Array.isArray(itens) || itens.length < 2) return "";
+  return (
+    "Cobrança unificada:\n" +
+    itens
+      .map((i) => `   • ${i.nome}: ${i.maquinas} ${i.maquinas === 1 ? "equipamento" : "equipamentos"} · ${formatCurrency(i.valor)}`)
+      .join("\n") +
+    "\n\n"
+  );
+}
+
 // Mensagem para quem ja passou do vencimento (tom de alerta de bloqueio).
-function mensagemAtraso({ dias, maquinas, valor, diaVencimento }) {
+function mensagemAtraso({ dias, maquinas, valor, diaVencimento, itens }) {
   return (
     "Olá! Tudo bem?\n\n" +
     "MachinePay | Financeiro\n\n" +
@@ -1385,6 +1468,7 @@ function mensagemAtraso({ dias, maquinas, valor, diaVencimento }) {
     `▪️ Equipamentos ativos: ${maquinas}\n` +
     `▪️ Valor total: ${formatCurrency(valor)}\n` +
     `▪️ Vencimento: dia ${diaVencimento}\n\n` +
+    detalheItens(itens) +
     "⚠️ Evite o bloqueio do cadastro e a suspensão dos serviços. Pedimos que regularize o pagamento para manter seus equipamentos conectados à MachinePay.\n\n" +
     "💳 Pagamento via Pix\n" +
     "Chave CNPJ:\n" +
@@ -1403,7 +1487,7 @@ function diasDeAtraso(vencimento) {
 }
 
 function mensagemCobranca(cobranca) {
-  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36;
+  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36 + (cobranca.maquinasParceria || 0);
   const dia = new Date(cobranca.vencimento).getUTCDate();
 
   if (cobranca.situacao === "ATRASADO") {
@@ -1412,6 +1496,7 @@ function mensagemCobranca(cobranca) {
       maquinas,
       valor: cobranca.valor,
       diaVencimento: dia,
+      itens: cobranca.itens,
     });
   }
 
@@ -1422,6 +1507,7 @@ function mensagemCobranca(cobranca) {
     `▪️ Equipamentos ativos: ${maquinas}\n` +
     `▪️ Valor total: ${formatCurrency(cobranca.valor)}\n` +
     `▪️ Vencimento: dia ${dia}\n\n` +
+    detalheItens(cobranca.itens) +
     MENSAGEM_RODAPE
   );
 }
@@ -1437,7 +1523,7 @@ function mensagemInadimplencia(cliente) {
 
 // Mensagem de cobranca com o Pix copia e cola da SumUp no lugar da chave CNPJ.
 function mensagemPixSumup(cobranca, copiaCola) {
-  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36;
+  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36 + (cobranca.maquinasParceria || 0);
   const dia = new Date(cobranca.vencimento).getUTCDate();
   return (
     "Olá! Tudo bem? 😊\n\n" +
@@ -1446,6 +1532,7 @@ function mensagemPixSumup(cobranca, copiaCola) {
     `▪️ Equipamentos ativos: ${maquinas}\n` +
     `▪️ Valor total: ${formatCurrency(cobranca.valor)}\n` +
     `▪️ Vencimento: dia ${dia}\n\n` +
+    detalheItens(cobranca.itens) +
     "💳 Pague com o Pix copia e cola abaixo. A baixa é automática, não precisa enviar comprovante:\n\n" +
     `${copiaCola}\n\n` +
     "Agradecemos pela parceria! Estamos à disposição para ajudar.\n\n" +
@@ -2117,12 +2204,21 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                         <button onClick={() => setHistorico(c.clienteId)} className="text-left">
                           <p className="font-medium text-white hover:text-blue-500 transition-colors">{c.cliente.nome}</p>
                           {c.cliente.telefone && <p className="text-xs text-slate-500">{formatarTelefone(c.cliente.telefone)}</p>}
+                          {Array.isArray(c.itens) && c.itens.length > 1 && (
+                            <p
+                              className="text-[11px] text-blue-600 dark:text-blue-300"
+                              title={c.itens.map((i) => `${i.nome}: ${i.maquinas} máq. · ${formatCurrency(i.valor)}`).join("\n")}
+                            >
+                              Unificada · {c.itens.length} clientes ({c.itens.slice(1).map((i) => i.nome).join(", ")})
+                            </p>
+                          )}
                         </button>
                       </td>
                       <td className="px-3 py-2.5 text-slate-400 whitespace-nowrap">{formatDate(c.vencimento)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-slate-300 whitespace-nowrap">
-                        {c.maquinasProprias + c.maquinasPlano36}
+                        {c.maquinasProprias + c.maquinasPlano36 + (c.maquinasParceria || 0)}
                         {c.maquinasPlano36 > 0 && <span className="text-xs text-slate-500"> ({c.maquinasPlano36} p36)</span>}
+                        {c.maquinasParceria > 0 && <span className="text-xs text-violet-500"> ({c.maquinasParceria} parc.)</span>}
                       </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap">
                         <p className="font-semibold text-white tabular-nums">{formatCurrency(c.valor)}</p>
@@ -2346,6 +2442,7 @@ function TagMaquina({ valor, rotulo, tom = "slate" }) {
     blue: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
     amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     red: "bg-red-500/10 text-red-600 dark:text-red-300",
+    violet: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
   };
   return (
     <span className={cn("px-1.5 py-px rounded-md text-[10px] font-medium whitespace-nowrap", tons[tom])}>
@@ -2367,7 +2464,10 @@ function formulaMensalidade(c) {
   const partes = [];
   if (c.maquinasProprias) partes.push(`${c.maquinasProprias} × ${formatCurrency(c.valorMensalidade)}`);
   if (c.maquinasPlano36) partes.push(`${c.maquinasPlano36} × ${formatCurrency(c.valorMensalidade36)}`);
-  return partes.join(" + ") || "Sem máquinas";
+  if (c.maquinasParceria && c.valorMensalidadeParceria) {
+    partes.push(`${c.maquinasParceria} parceria × ${formatCurrency(c.valorMensalidadeParceria)}`);
+  }
+  return partes.join(" + ") || (c.maquinasParceria ? "Só parceria (sem cobrança)" : "Sem máquinas");
 }
 
 function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, onImportar }) {
@@ -2430,12 +2530,22 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
     return c;
   }, [clientes]);
 
+  const nomePorId = useMemo(() => new Map(clientes.map((c) => [c.id, c.nome])), [clientes]);
+  const qtdAgrupados = useMemo(() => {
+    const m = new Map();
+    for (const c of clientes) {
+      if (c.agrupadoComId) m.set(c.agrupadoComId, (m.get(c.agrupadoComId) || 0) + 1);
+    }
+    return m;
+  }, [clientes]);
+
   const totais = useMemo(() => {
     const ativos = clientes.filter((c) => c.status === "ATIVO");
     return {
       ativos: ativos.length,
       proprias: ativos.reduce((a, c) => a + c.maquinasProprias, 0),
       plano36: ativos.reduce((a, c) => a + c.maquinasPlano36, 0),
+      parceria: ativos.reduce((a, c) => a + (c.maquinasParceria || 0), 0),
       off: clientes.reduce((a, c) => a + c.maquinasOff, 0),
       semVenda30: clientes.reduce((a, c) => a + semVenda30(c), 0),
       semVenda60: clientes.reduce((a, c) => a + (c.maquinasOnInativas60 || 0), 0),
@@ -2494,6 +2604,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
         {editando && (
           <ClienteModal
             cliente={null}
+            clientes={clientes}
             onClose={() => setEditando(null)}
             onSaved={(c) => {
               setEditando(null);
@@ -2511,7 +2622,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
         <Kpi icon={Users} label="Clientes ativos" value={totais.ativos} detail={`${contagem.SUSPENSO} suspensos · ${contagem.INATIVO} inativos`} />
         <Kpi icon={CreditCard} label="Máquinas próprias" value={totais.proprias} tone="slate" />
-        <Kpi icon={CreditCard} label="Máquinas plano 36" value={totais.plano36} tone="slate" />
+        <Kpi icon={CreditCard} label="Máquinas plano 36" value={totais.plano36} tone="slate" detail={totais.parceria ? `${totais.parceria} de parceria` : undefined} />
         <Kpi icon={PowerOff} label="Máquinas off" value={totais.off} tone={totais.off ? "amber" : "slate"} detail="Desligadas no painel" />
         <Kpi
           icon={Clock}
@@ -2596,6 +2707,16 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                           </span>
                         )}
                       </p>
+                      {c.agrupadoComId && nomePorId.get(c.agrupadoComId) && (
+                        <p className="text-[11px] text-blue-600 dark:text-blue-300">
+                          Cobrado junto com {nomePorId.get(c.agrupadoComId)}
+                        </p>
+                      )}
+                      {qtdAgrupados.get(c.id) > 0 && (
+                        <p className="text-[11px] text-blue-600 dark:text-blue-300">
+                          Cobrança unificada · +{qtdAgrupados.get(c.id)} cliente(s)
+                        </p>
+                      )}
                       <p className="text-xs text-slate-500">
                         {formatarTelefone(c.telefone) || <span className="italic">Sem telefone</span>}
                         {c.observacoes && <span title={c.observacoes}> · {c.observacoes.slice(0, 40)}{c.observacoes.length > 40 && "…"}</span>}
@@ -2628,6 +2749,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                     <div className="flex flex-wrap gap-1 mt-1">
                       <TagMaquina valor={c.maquinasProprias} rotulo="próprias" />
                       <TagMaquina valor={c.maquinasPlano36} rotulo="plano 36" tom="blue" />
+                      <TagMaquina valor={c.maquinasParceria} rotulo="parceria" tom="violet" />
                       <TagMaquina valor={c.maquinasOff} rotulo="off" tom="amber" />
                       <TagMaquina valor={semVenda30(c)} rotulo="sem venda 30d+" tom="amber" />
                       <TagMaquina valor={c.maquinasOnInativas60} rotulo="sem venda 60d+" tom="red" />
@@ -2742,6 +2864,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
       {editando && (
         <ClienteModal
           cliente={editando.id ? editando : null}
+          clientes={clientes}
           onClose={() => setEditando(null)}
           onSaved={(c, novo) => {
             setEditando(null);
