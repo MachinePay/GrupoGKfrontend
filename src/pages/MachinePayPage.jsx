@@ -893,7 +893,9 @@ function HistoricoModal({ clienteId, onClose }) {
               [
                 "Máquinas",
                 `${cliente.totalMaquinas}${cliente.maquinasOff ? ` (${cliente.maquinasOff} off)` : ""}${
-                  cliente.maquinasOnInativas ? ` · ${cliente.maquinasOnInativas} on inativas` : ""
+                  cliente.maquinasOnInativas
+                    ? ` · ${semVenda30(cliente)} / ${cliente.maquinasOnInativas60 || 0} sem venda 30d+/60d+`
+                    : ""
                 }`,
               ],
               [
@@ -933,13 +935,15 @@ function HistoricoModal({ clienteId, onClose }) {
                       Caixa {m.posId} · última venda{" "}
                       {m.ultimaVendaEm
                         ? new Date(m.ultimaVendaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-                        : "há mais de 30 dias / nunca"}
+                        : "nenhuma nos últimos 60 dias"}
                     </p>
                   </div>
                   {!m.ligada ? (
                     <TagMaquina valor="OFF" rotulo="" tom="amber" />
+                  ) : m.inativa60 ? (
+                    <TagMaquina valor="ON" rotulo="· sem venda 60d+" tom="red" />
                   ) : m.inativa ? (
-                    <TagMaquina valor="ON" rotulo="inativa" tom="red" />
+                    <TagMaquina valor="ON" rotulo="· sem venda 30d+" tom="amber" />
                   ) : (
                     <TagMaquina valor="ON" rotulo="" tom="blue" />
                   )}
@@ -1885,6 +1889,12 @@ function TagMaquina({ valor, rotulo, tom = "slate" }) {
   );
 }
 
+// Maquinas ON que venderam entre 30 e 60 dias atras (maquinasOnInativas inclui
+// as de 60+ dias, que nao venderam em todo o historico do painel).
+function semVenda30(c) {
+  return Math.max(0, (c.maquinasOnInativas || 0) - (c.maquinasOnInativas60 || 0));
+}
+
 // Mostra de onde vem o valor: "9 × R$ 40,00 + 2 × R$ 65,00".
 function formulaMensalidade(c) {
   if (c.valorFixo !== null) return "Valor combinado";
@@ -1942,11 +1952,13 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
   }
 
   const contagem = useMemo(() => {
-    const c = { TODOS: clientes.length, ATIVO: 0, SUSPENSO: 0, INATIVO: 0, DEVENDO: 0, ON_INATIVAS: 0 };
+    const c = { TODOS: clientes.length, ATIVO: 0, SUSPENSO: 0, INATIVO: 0, DEVENDO: 0, COM_OFF: 0, SEM_VENDA_30: 0, SEM_VENDA_60: 0 };
     for (const cl of clientes) {
       c[cl.status] += 1;
       if (cl.valorAtrasado > 0) c.DEVENDO += 1;
-      if (cl.maquinasOnInativas > 0) c.ON_INATIVAS += 1;
+      if (cl.maquinasOff > 0) c.COM_OFF += 1;
+      if (semVenda30(cl) > 0) c.SEM_VENDA_30 += 1;
+      if (cl.maquinasOnInativas60 > 0) c.SEM_VENDA_60 += 1;
     }
     return c;
   }, [clientes]);
@@ -1958,7 +1970,8 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
       proprias: ativos.reduce((a, c) => a + c.maquinasProprias, 0),
       plano36: ativos.reduce((a, c) => a + c.maquinasPlano36, 0),
       off: clientes.reduce((a, c) => a + c.maquinasOff, 0),
-      onInativas: clientes.reduce((a, c) => a + (c.maquinasOnInativas || 0), 0),
+      semVenda30: clientes.reduce((a, c) => a + semVenda30(c), 0),
+      semVenda60: clientes.reduce((a, c) => a + (c.maquinasOnInativas60 || 0), 0),
       mrr: ativos.reduce((a, c) => a + c.valorCalculado, 0),
     };
   }, [clientes]);
@@ -1977,8 +1990,10 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
     return clientes
       .filter((c) => {
         if (filtro === "DEVENDO" && !(c.valorAtrasado > 0)) return false;
-        if (filtro === "ON_INATIVAS" && !(c.maquinasOnInativas > 0)) return false;
-        if (!["TODOS", "DEVENDO", "ON_INATIVAS"].includes(filtro) && c.status !== filtro) return false;
+        if (filtro === "COM_OFF" && !(c.maquinasOff > 0)) return false;
+        if (filtro === "SEM_VENDA_30" && !(semVenda30(c) > 0)) return false;
+        if (filtro === "SEM_VENDA_60" && !(c.maquinasOnInativas60 > 0)) return false;
+        if (!["TODOS", "DEVENDO", "COM_OFF", "SEM_VENDA_30", "SEM_VENDA_60"].includes(filtro) && c.status !== filtro) return false;
         return !termo || normalizarBusca(`${c.nome} ${c.telefone} ${c.documento} ${c.observacoes}`).includes(termo);
       })
       .sort((a, b) => {
@@ -2025,17 +2040,24 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
         <Kpi icon={Users} label="Clientes ativos" value={totais.ativos} detail={`${contagem.SUSPENSO} suspensos · ${contagem.INATIVO} inativos`} />
         <Kpi icon={CreditCard} label="Máquinas próprias" value={totais.proprias} tone="slate" />
         <Kpi icon={CreditCard} label="Máquinas plano 36" value={totais.plano36} tone="slate" />
         <Kpi icon={PowerOff} label="Máquinas off" value={totais.off} tone={totais.off ? "amber" : "slate"} detail="Desligadas no painel" />
         <Kpi
+          icon={Clock}
+          label="Sem venda há 30+ dias"
+          value={totais.semVenda30}
+          tone={totais.semVenda30 ? "amber" : "slate"}
+          detail="Ligadas, venderam entre 30 e 60 dias atrás"
+        />
+        <Kpi
           icon={AlertTriangle}
-          label="Máquinas on inativas"
-          value={totais.onInativas}
-          tone={totais.onInativas ? "red" : "slate"}
-          detail="Ligadas, sem venda há 30 dias"
+          label="Sem venda há 60+ dias"
+          value={totais.semVenda60}
+          tone={totais.semVenda60 ? "red" : "slate"}
+          detail="Ligadas, nenhuma venda nos 60 dias do painel"
         />
         <Kpi
           icon={Wallet}
@@ -2054,9 +2076,9 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
             {cobrancaAtiva && (
               <Chip active={filtro === "DEVENDO"} onClick={() => setFiltro("DEVENDO")} count={contagem.DEVENDO}>Devendo</Chip>
             )}
-            {contagem.ON_INATIVAS > 0 && (
-              <Chip active={filtro === "ON_INATIVAS"} onClick={() => setFiltro("ON_INATIVAS")} count={contagem.ON_INATIVAS}>Com on inativas</Chip>
-            )}
+            <Chip active={filtro === "COM_OFF"} onClick={() => setFiltro("COM_OFF")} count={contagem.COM_OFF}>Com máquinas off</Chip>
+            <Chip active={filtro === "SEM_VENDA_30"} onClick={() => setFiltro("SEM_VENDA_30")} count={contagem.SEM_VENDA_30}>Sem venda 30d+</Chip>
+            <Chip active={filtro === "SEM_VENDA_60"} onClick={() => setFiltro("SEM_VENDA_60")} count={contagem.SEM_VENDA_60}>Sem venda 60d+</Chip>
             <Chip active={filtro === "SUSPENSO"} onClick={() => setFiltro("SUSPENSO")} count={contagem.SUSPENSO}>Suspensos</Chip>
             <Chip active={filtro === "INATIVO"} onClick={() => setFiltro("INATIVO")} count={contagem.INATIVO}>Inativos</Chip>
             <Chip active={filtro === "TODOS"} onClick={() => setFiltro("TODOS")} count={contagem.TODOS}>Todos</Chip>
@@ -2129,7 +2151,8 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                       <TagMaquina valor={c.maquinasProprias} rotulo="próprias" />
                       <TagMaquina valor={c.maquinasPlano36} rotulo="plano 36" tom="blue" />
                       <TagMaquina valor={c.maquinasOff} rotulo="off" tom="amber" />
-                      <TagMaquina valor={c.maquinasOnInativas} rotulo="on inativas" tom="red" />
+                      <TagMaquina valor={semVenda30(c)} rotulo="sem venda 30d+" tom="amber" />
+                      <TagMaquina valor={c.maquinasOnInativas60} rotulo="sem venda 60d+" tom="red" />
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
@@ -2430,7 +2453,7 @@ function AtualizarPainelButton({ toast }) {
       const u = atual.ultima;
       toast.show(
         u.ok
-          ? `Painel atualizado: ${u.clientesMachinePay} clientes · ${u.maquinas.off} off · ${u.maquinas.onInativas} on inativas`
+          ? `Painel atualizado: ${u.clientesMachinePay} clientes · ${u.maquinas.off} off · ${u.maquinas.onInativas - u.maquinas.onInativas60} sem venda 30d+ · ${u.maquinas.onInativas60} sem venda 60d+`
           : `Falha ao atualizar: ${u.erro}`,
         { error: !u.ok },
       );
