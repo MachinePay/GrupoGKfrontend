@@ -1475,11 +1475,30 @@ function SumupTab() {
   const [form, setForm] = useState({ nome: "", apiKey: "" });
   const [editando, setEditando] = useState(null);
   const [aberta, setAberta] = useState(null);
+  const [busca, setBusca] = useState("");
 
   const { data: contas = [], isLoading, isError, error } = useQuery({
     queryKey: ["sumup-contas"],
     queryFn: () => sumupContasApi.listar().then((r) => r.data),
   });
+
+  // Busca pelo nome dado aqui, pelo nome da empresa na SumUp ou pelo merchant code.
+  const termo = busca
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+  const contasFiltradas = termo
+    ? contas.filter((c) =>
+        [c.nome, c.nomeConta, c.merchantCode]
+          .filter(Boolean)
+          .join(" ")
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .toLowerCase()
+          .includes(termo),
+      )
+    : contas;
 
   const salvar = useMutation({
     mutationFn: () =>
@@ -1522,6 +1541,7 @@ function SumupTab() {
           e.preventDefault();
           salvar.mutate();
         }}
+        autoComplete="off"
         className="glass rounded-xl p-4 space-y-3"
       >
         <p className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -1533,11 +1553,15 @@ function SumupTab() {
             value={form.nome}
             onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
             placeholder="Ex: duBob"
+            name="sumup-conta-nome"
+            autoComplete="off"
           />
           <Input
             label={editando ? "Nova API key (vazio mantém a atual)" : "API key"}
             type="password"
-            autoComplete="off"
+            name="sumup-conta-api-key"
+            // Sem isso o navegador trata como login e preenche e-mail e senha salvos.
+            autoComplete="new-password"
             value={form.apiKey}
             onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
             placeholder="sup_sk_..."
@@ -1575,7 +1599,23 @@ function SumupTab() {
         <p className="text-sm text-slate-500 text-center">Nenhuma conta SumUp cadastrada.</p>
       ) : (
         <div className="space-y-3">
-          {contas.map((conta) => (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar conta pelo nome, empresa ou merchant code…"
+              autoComplete="off"
+              className="input-base max-w-sm"
+            />
+            <span className="text-xs text-slate-500">
+              {termo ? `${contasFiltradas.length} de ${contas.length}` : contas.length} conta(s)
+            </span>
+          </div>
+          {!contasFiltradas.length && (
+            <p className="text-sm text-slate-500 text-center py-4">Nenhuma conta encontrada para "{busca}".</p>
+          )}
+          {contasFiltradas.map((conta) => (
             <div key={conta.id} className="glass rounded-xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
