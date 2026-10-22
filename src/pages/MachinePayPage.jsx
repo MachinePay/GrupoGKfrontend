@@ -21,9 +21,12 @@ import {
   Minus,
   MoreVertical,
   Pencil,
+  KeyRound,
   Plus,
   Power,
   PowerOff,
+  QrCode,
+  RefreshCw,
   RotateCcw,
   Search,
   Sparkles,
@@ -1431,6 +1434,170 @@ function mensagemInadimplencia(cliente) {
   });
 }
 
+// Mensagem de cobranca com o Pix copia e cola da SumUp no lugar da chave CNPJ.
+function mensagemPixSumup(cobranca, copiaCola) {
+  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36;
+  const dia = new Date(cobranca.vencimento).getUTCDate();
+  return (
+    "Olá! Tudo bem? 😊\n\n" +
+    "MachinePay | Financeiro\n\n" +
+    "Segue a sua mensalidade:\n\n" +
+    `▪️ Equipamentos ativos: ${maquinas}\n` +
+    `▪️ Valor total: ${formatCurrency(cobranca.valor)}\n` +
+    `▪️ Vencimento: dia ${dia}\n\n` +
+    "💳 Pague com o Pix copia e cola abaixo. A baixa é automática, não precisa enviar comprovante:\n\n" +
+    `${copiaCola}\n\n` +
+    "Agradecemos pela parceria! Estamos à disposição para ajudar.\n\n" +
+    "Equipe Financeira | MachinePay"
+  );
+}
+
+function PixSumupModal({ cobranca, onClose, onPago, toast }) {
+  const [pix, setPix] = useState(null);
+  const [qrFalhou, setQrFalhou] = useState(false);
+
+  const gerar = useMutation({
+    mutationFn: (novo) => machinePayApi.gerarPix(cobranca.id, novo).then((r) => r.data),
+    onSuccess: (data) => {
+      setQrFalhou(false);
+      setPix(data);
+    },
+  });
+
+  const verificar = useMutation({
+    mutationFn: () => machinePayApi.verificarPix(cobranca.id).then((r) => r.data),
+    onSuccess: (r, origem) => {
+      if (r.baixado) onPago();
+      else if (origem === "manual") toast.show(`Ainda não pago · status na SumUp: ${r.status || "?"}`);
+    },
+  });
+
+  const { mutate: gerarPix } = gerar;
+  useEffect(() => {
+    gerarPix(false);
+  }, [gerarPix]);
+
+  // Enquanto o modal esta aberto, confere o pagamento a cada 10 segundos.
+  const { mutate: verificarPix } = verificar;
+  useEffect(() => {
+    if (!pix) return undefined;
+    const id = setInterval(() => verificarPix("auto"), 10000);
+    return () => clearInterval(id);
+  }, [pix, verificarPix]);
+
+  async function copiar(texto, aviso) {
+    try {
+      await copiarTexto(texto);
+      toast.show(aviso);
+    } catch (e) {
+      toast.show(erroApi(e), { error: true });
+    }
+  }
+
+  const mensagem = pix?.copiaCola ? mensagemPixSumup(cobranca, pix.copiaCola) : "";
+  const wa = mensagem && linkWhatsApp(cobranca.cliente.telefone, mensagem);
+  const verificandoManual = verificar.isPending && verificar.variables === "manual";
+
+  return (
+    <Modal
+      title="Pix da cobrança"
+      subtitle={`${cobranca.cliente.nome} · ${rotuloCompetencia(cobranca.competencia)} · ${formatCurrency(cobranca.valor)}`}
+      onClose={onClose}
+    >
+      {gerar.isPending && (
+        <div className="flex flex-col items-center gap-3 py-10 text-sm text-slate-500">
+          <Loader2 size={22} className="animate-spin text-blue-500" /> Gerando Pix na SumUp...
+        </div>
+      )}
+
+      {gerar.isError && (
+        <div className="space-y-3">
+          <p className="text-sm text-red-500">{erroApi(gerar.error)}</p>
+          <div className="flex justify-end gap-2">
+            <button onClick={onClose} className="btn-ghost">Fechar</button>
+            <button onClick={() => gerar.mutate(false)} className="btn-primary">Tentar de novo</button>
+          </div>
+        </div>
+      )}
+
+      {pix && !gerar.isPending && !gerar.isError && (
+        <div className="space-y-4">
+          {pix.qrUrl && !qrFalhou && (
+            <div className="flex justify-center">
+              <img
+                src={pix.qrUrl}
+                alt="QR Code Pix"
+                onError={() => setQrFalhou(true)}
+                className="w-52 h-52 rounded-xl bg-[#fff] p-2 object-contain"
+              />
+            </div>
+          )}
+
+          {pix.copiaCola && (
+            <Campo label="Pix copia e cola">
+              <div className="flex gap-2">
+                <input readOnly value={pix.copiaCola} className="input-base font-mono text-xs!" onFocus={(e) => e.target.select()} />
+                <button
+                  type="button"
+                  onClick={() => copiar(pix.copiaCola, "Pix copia e cola copiado")}
+                  className="btn-ghost inline-flex items-center gap-1 shrink-0"
+                >
+                  <Copy size={14} /> Copiar
+                </button>
+              </div>
+            </Campo>
+          )}
+
+          <div className="flex items-start gap-2 rounded-xl p-3 border border-emerald-500/30 bg-emerald-500/5 text-xs text-slate-400">
+            <CheckCircle2 size={15} className="text-emerald-500 shrink-0 mt-0.5" />
+            <span>
+              Este Pix é exclusivo desta cobrança. Quando o cliente pagar, a baixa acontece sozinha.
+              {pix.validoAte && <> Válido até <b>{new Date(pix.validoAte).toLocaleString("pt-BR")}</b>.</>}
+            </span>
+          </div>
+
+          {verificar.isError && verificar.variables === "manual" && (
+            <p className="text-sm text-red-500">{erroApi(verificar.error)}</p>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              onClick={() => gerar.mutate(true)}
+              className="btn-ghost inline-flex items-center gap-1"
+              title="Cria outro Pix (por exemplo, se o atual venceu ou o valor mudou)"
+            >
+              <RefreshCw size={14} /> Gerar novo
+            </button>
+            <button
+              onClick={() => verificar.mutate("manual")}
+              disabled={verificandoManual}
+              className="btn-ghost inline-flex items-center gap-1"
+            >
+              {verificandoManual ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              Verificar pagamento
+            </button>
+            {mensagem && (
+              <button onClick={() => copiar(mensagem, "Mensagem com Pix copiada")} className="btn-ghost inline-flex items-center gap-1">
+                <Copy size={14} /> Copiar mensagem
+              </button>
+            )}
+            {wa && (
+              <a
+                href={wa}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-[#fff] bg-emerald-600 hover:bg-emerald-500"
+              >
+                <MessageCircle size={15} /> Enviar no WhatsApp
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ─── Aba: Cobranças ─────────────────────────────────────────────────────────
 
 function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, onImportar }) {
@@ -1443,6 +1610,13 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   const [editar, setEditar] = useState(null);
   const [confirmar, setConfirmar] = useState(null);
   const [historico, setHistorico] = useState(null);
+  const [pixCobranca, setPixCobranca] = useState(null);
+
+  const { data: sumup } = useQuery({
+    queryKey: ["machinepay", "sumup"],
+    queryFn: () => machinePayApi.sumupConfig().then((r) => r.data),
+  });
+  const sumupAtivo = Boolean(sumup?.ativo);
 
   const { data: evolucao = [] } = useQuery({
     queryKey: ["machinepay", "evolucao"],
@@ -1746,6 +1920,18 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                               <CheckCircle2 size={13} /> Receber
                             </button>
                           )}
+                          {aberta && sumupAtivo && (
+                            <button
+                              onClick={() => setPixCobranca(c)}
+                              title={c.pixCopiaCola ? "Ver o Pix SumUp desta cobrança" : "Gerar Pix SumUp exclusivo desta cobrança"}
+                              className={cn(
+                                "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300",
+                                c.pixCopiaCola ? "bg-blue-500/20 hover:bg-blue-500/30" : "bg-blue-500/10 hover:bg-blue-500/20",
+                              )}
+                            >
+                              <QrCode size={13} /> Pix
+                            </button>
+                          )}
                           {wa && aberta && (
                             <a href={wa} target="_blank" rel="noreferrer" title="Enviar cobrança no WhatsApp" className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-500/10">
                               <MessageCircle size={15} />
@@ -1867,6 +2053,22 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
       )}
       {confirmar && <ConfirmModal {...confirmar} onClose={() => setConfirmar(null)} />}
       {historico && <HistoricoModal clienteId={historico} onClose={() => setHistorico(null)} />}
+      {pixCobranca && (
+        <PixSumupModal
+          cobranca={pixCobranca}
+          toast={toast}
+          onClose={() => {
+            setPixCobranca(null);
+            invalidar();
+          }}
+          onPago={() => {
+            setPixCobranca(null);
+            invalidar();
+            qc.invalidateQueries({ queryKey: ["movimentacoes"] });
+            toast.show(`Pix recebido · baixa automática de ${pixCobranca.cliente.nome}`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -2509,6 +2711,217 @@ function AtualizarPainelButton({ toast }) {
   );
 }
 
+// ─── Aba: SumUp (Pix com baixa automática) ──────────────────────────────────
+
+function SumupTab({ contas, toast }) {
+  const { data: config, isLoading, error } = useQuery({
+    queryKey: ["machinepay", "sumup"],
+    queryFn: () => machinePayApi.sumupConfig().then((r) => r.data),
+  });
+
+  if (isLoading || !config) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-slate-500 py-10 justify-center">
+        {error ? <span className="text-red-500">{erroApi(error)}</span> : <><Loader2 size={16} className="animate-spin" /> Carregando configuração...</>}
+      </div>
+    );
+  }
+
+  return <SumupForm config={config} contas={contas} toast={toast} />;
+}
+
+function SumupForm({ config, contas, toast }) {
+  const qc = useQueryClient();
+  // A chave da API nunca volta inteira do servidor: o campo comeca vazio.
+  const [form, setForm] = useState(() => ({
+    ativo: config.ativo,
+    apiKey: "",
+    merchantCode: config.merchantCode || "",
+    tipoPix: config.tipoPix,
+    validadeHoras: config.validadeHoras,
+    contaDestinoId: config.contaDestinoId ? String(config.contaDestinoId) : "",
+    urlPublica: config.urlPublica || "",
+  }));
+  const [teste, setTeste] = useState(null);
+
+  const set = (campo) => (e) =>
+    setForm((f) => ({ ...f, [campo]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+
+  const salvar = useMutation({
+    mutationFn: () =>
+      machinePayApi
+        .salvarSumupConfig({
+          ...form,
+          apiKey: form.apiKey.trim() || undefined,
+          validadeHoras: Number(form.validadeHoras),
+          contaDestinoId: form.contaDestinoId ? Number(form.contaDestinoId) : null,
+        })
+        .then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData(["machinepay", "sumup"], data);
+      setForm((f) => ({ ...f, apiKey: "", merchantCode: data.merchantCode || "" }));
+      toast.show("Configuração da SumUp salva");
+    },
+    onError: (e) => toast.show(erroApi(e), { error: true }),
+  });
+
+  const testar = useMutation({
+    mutationFn: () => machinePayApi.testarSumup().then((r) => r.data),
+    onSuccess: (data) => {
+      setTeste(data);
+      qc.invalidateQueries({ queryKey: ["machinepay", "sumup"] });
+      setForm((f) => ({ ...f, merchantCode: f.merchantCode || data.merchantCode || "" }));
+    },
+    onError: (e) => setTeste({ erro: erroApi(e) }),
+  });
+
+  async function copiarWebhook() {
+    try {
+      await copiarTexto(config.webhookUrl);
+      toast.show("URL do webhook copiada");
+    } catch (e) {
+      toast.show(erroApi(e), { error: true });
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="glass rounded-2xl p-5 card-shadow space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-white">Conta SumUp</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Gera um Pix exclusivo para cada cobrança. Quando o cliente paga, a cobrança recebe baixa sozinha.
+            </p>
+          </div>
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-white cursor-pointer shrink-0">
+            <input type="checkbox" checked={form.ativo} onChange={set("ativo")} />
+            {form.ativo ? "Ativa" : "Desativada"}
+          </label>
+        </div>
+
+        <Campo
+          label="Chave da API (secret key)"
+          hint={config.apiKeyConfigurada ? `Chave salva: ${config.apiKeyMascarada}. Deixe em branco para manter.` : "Começa com sup_sk_. Fica guardada só no servidor."}
+        >
+          <input
+            type="password"
+            autoComplete="off"
+            value={form.apiKey}
+            onChange={set("apiKey")}
+            placeholder={config.apiKeyConfigurada ? "••••••••" : "sup_sk_..."}
+            className="input-base font-mono"
+          />
+        </Campo>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo label="Código do estabelecimento (merchant code)" hint="Preenchido automaticamente pelo Testar conexão.">
+            <input value={form.merchantCode} onChange={set("merchantCode")} placeholder="Ex.: MH4H92C7" className="input-base font-mono uppercase" />
+          </Campo>
+          <Campo label="Tipo de Pix">
+            <select value={form.tipoPix} onChange={set("tipoPix")} className="input-base">
+              <option value="pix">Pix (cai na conta SumUp Bank)</option>
+              <option value="qr_code_pix">QR Code Pix (repasse normal, com taxa)</option>
+            </select>
+          </Campo>
+          <Campo label="Validade de cada Pix (horas)" hint="Depois disso, gere um Pix novo na cobrança.">
+            <input type="number" min={1} max={720} value={form.validadeHoras} onChange={set("validadeHoras")} className="input-base" />
+          </Campo>
+          <Campo label="Lançar entrada na conta" hint="Conta que recebe o lançamento quando o Pix é pago.">
+            <select value={form.contaDestinoId} onChange={set("contaDestinoId")} className="input-base">
+              <option value="">Não lançar, só marcar como pago</option>
+              {contas.map((c) => (
+                <option key={c.id} value={c.id}>{c.nome} · {c.banco}</option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+
+        <Campo
+          label="Endereço público do sistema (para o aviso automático)"
+          hint="URL https onde o backend está publicado. Sem ela, o sistema confere os Pix a cada 5 minutos."
+        >
+          <input value={form.urlPublica} onChange={set("urlPublica")} placeholder="https://api.seudominio.com.br" className="input-base" />
+        </Campo>
+
+        {config.webhookUrl && (
+          <div className="rounded-xl p-3 border border-[var(--border-color)] text-xs text-slate-400 space-y-1">
+            <p className="font-medium text-slate-300">URL de aviso enviada à SumUp em cada Pix</p>
+            <div className="flex items-center gap-2">
+              <code className="truncate">{config.webhookUrl}</code>
+              <button type="button" onClick={copiarWebhook} className="p-1 rounded text-slate-400 hover:text-blue-500 shrink-0" title="Copiar">
+                <Copy size={13} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {teste && (
+          <div
+            className={cn(
+              "rounded-xl p-3 border text-sm",
+              teste.erro ? "border-red-500/30 bg-red-500/5 text-red-500" : "border-emerald-500/30 bg-emerald-500/5 text-slate-300",
+            )}
+          >
+            {teste.erro ? (
+              teste.erro
+            ) : (
+              <div className="space-y-1">
+                <p className="font-semibold text-white">
+                  Conexão ok{teste.nomeConta ? ` · ${teste.nomeConta}` : ""} · {teste.merchantCode}
+                </p>
+                <p className="text-xs">
+                  Formas liberadas na API: {teste.metodos.length ? teste.metodos.join(", ") : "não informado"}
+                </p>
+                {!teste.pixDisponivel && (
+                  <p className="text-xs text-amber-500">
+                    {teste.erroMetodos
+                      ? `Não foi possível confirmar se o Pix está liberado: ${teste.erroMetodos}`
+                      : "O Pix não apareceu na lista. Peça à SumUp para liberar Pix na API da sua conta."}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            onClick={() => testar.mutate()}
+            disabled={testar.isPending || !config.apiKeyConfigurada}
+            title={config.apiKeyConfigurada ? undefined : "Salve a chave antes de testar"}
+            className="btn-ghost inline-flex items-center gap-2"
+          >
+            {testar.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Testar conexão
+          </button>
+          <button onClick={() => salvar.mutate()} disabled={salvar.isPending} className="btn-primary inline-flex items-center gap-2">
+            {salvar.isPending && <Loader2 size={14} className="animate-spin" />}
+            Salvar
+          </button>
+        </div>
+        {config.updatedBy && (
+          <p className="text-[11px] text-slate-500 text-right">
+            Alterado por {config.updatedBy}{config.updatedAt && ` em ${new Date(config.updatedAt).toLocaleString("pt-BR")}`}
+          </p>
+        )}
+      </div>
+
+      <div className="glass rounded-2xl p-5 card-shadow space-y-3 text-sm text-slate-400 h-fit">
+        <h3 className="text-sm font-semibold text-white">Como funciona</h3>
+        <ol className="list-decimal pl-4 space-y-2 text-xs">
+          <li>No painel da SumUp, crie uma chave de API em <b>Desenvolvedores › Chaves de API</b> e cole aqui.</li>
+          <li>Salve e clique em <b>Testar conexão</b> para confirmar a conta e se o Pix está liberado.</li>
+          <li>Ative a integração. Nas cobranças em aberto aparece o botão <b>Pix</b>.</li>
+          <li>O botão gera um QR Code e um copia e cola só daquela cobrança, prontos para mandar no WhatsApp.</li>
+          <li>Quando o cliente paga, a cobrança vira <b>Pago</b> (forma "PIX SumUp") e a entrada é lançada na conta escolhida.</li>
+        </ol>
+        <p className="text-xs">Só administradores podem alterar esta configuração.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function MachinePayPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -2535,20 +2948,21 @@ export default function MachinePayPage() {
   const { data: contas = [] } = useQuery({
     queryKey: ["contas"],
     queryFn: () => cadastrosApi.listarContas().then((r) => r.data),
-    enabled: cobrancaAtiva,
+    enabled: cobrancaAtiva || abaEscolhida === "sumup",
   });
 
   const clientes = clientesQuery.data ?? [];
   const devendo = clientes.filter((c) => c.valorAtrasado > 0).length;
   const erro = clientesQuery.error || competenciaQuery.error || configQuery.error;
-  // Em modo cadastro so existe a lista de clientes.
-  const aba = cobrancaAtiva ? abaEscolhida : "clientes";
+  // Em modo cadastro so existem a lista de clientes e a configuracao da SumUp.
+  const aba = cobrancaAtiva || abaEscolhida === "sumup" ? abaEscolhida : "clientes";
 
   const abas = [
-    { key: "cobrancas", label: "Cobranças do mês", icon: CircleDollarSign },
+    cobrancaAtiva && { key: "cobrancas", label: "Cobranças do mês", icon: CircleDollarSign },
     { key: "clientes", label: "Clientes", icon: Users, count: clientes.length },
-    { key: "inadimplencia", label: "Inadimplência", icon: AlertTriangle, count: devendo || undefined },
-  ];
+    cobrancaAtiva && { key: "inadimplencia", label: "Inadimplência", icon: AlertTriangle, count: devendo || undefined },
+    { key: "sumup", label: "SumUp", icon: KeyRound },
+  ].filter(Boolean);
 
   function alternarCobranca(ativar) {
     setConfirmarCobranca({
@@ -2632,8 +3046,8 @@ export default function MachinePayPage() {
         </div>
       )}
 
-      {cobrancaAtiva && (
-        <div className="flex gap-1 border-b border-[var(--border-color)]">
+      {!configQuery.isLoading && (
+        <div className="flex gap-1 border-b border-[var(--border-color)] overflow-x-auto">
           {abas.map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}
@@ -2689,6 +3103,7 @@ export default function MachinePayPage() {
         />
       )}
       {aba === "inadimplencia" && <InadimplenciaTab clientes={clientes} toast={toast} />}
+      {aba === "sumup" && <SumupTab contas={contas} toast={toast} />}
 
       {importar && (
         <ImportarModal

@@ -207,6 +207,12 @@ export const machinePayApi = {
   estornarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/estornar`),
   cancelarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/cancelar`),
   removerCobranca: (id) => api.delete(`/machinepay/cobrancas/${id}`),
+  gerarPix: (id, novo = false) =>
+    api.post(`/machinepay/cobrancas/${id}/pix`, { novo }),
+  verificarPix: (id) => api.post(`/machinepay/cobrancas/${id}/pix/verificar`),
+  sumupConfig: () => api.get("/machinepay/sumup/config"),
+  salvarSumupConfig: (payload) => api.put("/machinepay/sumup/config", payload),
+  testarSumup: () => api.post("/machinepay/sumup/testar"),
 };
 
 export default api;
