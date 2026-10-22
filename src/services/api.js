@@ -213,6 +213,7 @@ export const machinePayApi = {
   sumupConfig: () => api.get("/machinepay/sumup/config"),
   salvarSumupConfig: (payload) => api.put("/machinepay/sumup/config", payload),
   testarSumup: () => api.post("/machinepay/sumup/testar"),
+  conferirPixPagos: () => api.post("/machinepay/sumup/conferir"),
   whatsappConfig: () => api.get("/machinepay/whatsapp/config"),
   salvarWhatsappConfig: (payload) =>
     api.put("/machinepay/whatsapp/config", payload),

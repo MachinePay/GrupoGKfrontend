@@ -1775,6 +1775,23 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   const sumupAtivo = Boolean(sumup?.ativo);
   const [enviarWa, setEnviarWa] = useState(null);
 
+  const conferirPix = useMutation({
+    mutationFn: () => machinePayApi.conferirPixPagos().then((r) => r.data),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["machinepay"] });
+      qc.invalidateQueries({ queryKey: ["movimentacoes"] });
+      if (!r.conferidos) {
+        toast.show("Nenhum Pix em aberto para verificar");
+      } else if (r.baixas) {
+        const nomes = r.pagos.slice(0, 3).join(", ") + (r.pagos.length > 3 ? "..." : "");
+        toast.show(`${r.baixas} Pix pago(s) com baixa: ${nomes}`);
+      } else {
+        toast.show(`${r.conferidos} Pix verificado(s) · nenhum pagamento novo${r.falhas ? ` · ${r.falhas} sem resposta` : ""}`);
+      }
+    },
+    onError: (e) => toast.show(erroApi(e), { error: true }),
+  });
+
   const { data: whatsapp } = useQuery({
     queryKey: ["machinepay", "whatsapp"],
     queryFn: () => machinePayApi.whatsappConfig().then((r) => r.data),
@@ -1997,9 +2014,20 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                 <Chip active={filtro === "CANCELADO"} onClick={() => setFiltro("CANCELADO")} count={contagem.CANCELADO}>Canceladas</Chip>
               )}
             </div>
+            {sumupAtivo && (
+              <button
+                onClick={() => conferirPix.mutate()}
+                disabled={conferirPix.isPending}
+                title="Consulta na SumUp todos os Pix enviados das cobranças em aberto e dá baixa nos que foram pagos"
+                className="btn-ghost inline-flex items-center gap-1.5 ml-auto py-1.5!"
+              >
+                {conferirPix.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {conferirPix.isPending ? "Verificando..." : "Verificar Pix pagos"}
+              </button>
+            )}
             <button
               onClick={() => exportarCobrancasExcel(lista, rotuloCompetencia(competencia))}
-              className="btn-ghost inline-flex items-center gap-1.5 ml-auto py-1.5!"
+              className={cn("btn-ghost inline-flex items-center gap-1.5 py-1.5!", !sumupAtivo && "ml-auto")}
             >
               <Download size={14} /> Excel
             </button>
@@ -3149,7 +3177,7 @@ const ESTADO_WHATSAPP = {
   open: { label: "Conectado", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
   connecting: { label: "Aguardando leitura do QR", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30" },
   close: { label: "Desconectado", cls: "bg-red-500/10 text-red-600 dark:text-red-300 border-red-500/30" },
-  inexistente: { label: "Instância ainda não criada", cls: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30" },
+  inexistente: { label: "Instância ainda não criada · clique em Conectar número", cls: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30" },
   erro: { label: "Sem resposta da Evolution API", cls: "bg-red-500/10 text-red-600 dark:text-red-300 border-red-500/30" },
 };
 
