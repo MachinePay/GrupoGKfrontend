@@ -2117,7 +2117,14 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                 <tr key={c.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                   <td className="pl-4 pr-3 py-3 min-w-[220px]">
                     <button onClick={() => setHistorico(c.id)} className="text-left" title="Ver histórico do cliente">
-                      <p className="font-medium text-white hover:text-blue-500 transition-colors">{c.nome}</p>
+                      <p className="font-medium text-white hover:text-blue-500 transition-colors">
+                        {c.nome}
+                        {c.painelUsrId && c.painelRevenda !== "Machine Pay" && (
+                          <span className="ml-1.5 px-1.5 py-px rounded-md text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-300 align-middle">
+                            {c.painelRevenda || "Sem revenda"}
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">
                         {formatarTelefone(c.telefone) || <span className="italic">Sem telefone</span>}
                         {c.observacoes && <span title={c.observacoes}> · {c.observacoes.slice(0, 40)}{c.observacoes.length > 40 && "…"}</span>}
