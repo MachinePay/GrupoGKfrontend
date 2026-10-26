@@ -1694,7 +1694,7 @@ function telefoneValido(tel) {
 
 const HORAS_REENVIO = 12;
 
-function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, onClose, onDone }) {
+function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, filaAtual, onClose, onDone }) {
   const [reenviar, setReenviar] = useState(false);
   const [limite] = useState(() => Date.now() - HORAS_REENVIO * 60 * 60 * 1000);
 
@@ -1709,8 +1709,27 @@ function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, onClose
       c.whatsappEnviadoEm &&
       new Date(c.whatsappEnviadoEm).getTime() > limite,
   );
-  const vaoSair = cobrancas.length - semTelefone.length - naFila.length - (reenviar ? 0 : recentes.length);
-  const minutos = Math.max(1, Math.round((vaoSair * intervaloSegundos) / 60));
+  const ficamDeFora = new Set([...semTelefone, ...naFila, ...(reenviar ? [] : recentes)]);
+  const destinatarios = cobrancas.filter((c) => !ficamDeFora.has(c));
+  const vaoSair = destinatarios.length;
+  const valorTotal = destinatarios.reduce((a, c) => a + c.valor, 0);
+
+  // Cada envio: gerar o Pix e mandar 2 mensagens (~5s) e depois a pausa entre
+  // clientes. Quem ja esta na fila sai antes.
+  const SEGUNDOS_POR_ENVIO = 5;
+  const naFrente = filaAtual || 0;
+  const totalEnvios = naFrente + vaoSair;
+  const segundos = totalEnvios
+    ? Math.max(0, totalEnvios - 1) * intervaloSegundos + totalEnvios * SEGUNDOS_POR_ENVIO
+    : 0;
+  const [agora] = useState(() => Date.now());
+  const terminaEm = new Date(agora + segundos * 1000);
+  const tempoTexto =
+    segundos < 60
+      ? "menos de 1 minuto"
+      : segundos < 3600
+        ? `cerca de ${Math.round(segundos / 60)} min`
+        : `cerca de ${Math.floor(segundos / 3600)}h${String(Math.round((segundos % 3600) / 60)).padStart(2, "0")}`;
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -1721,14 +1740,46 @@ function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, onClose
   return (
     <Modal title="Enviar cobranças no WhatsApp" subtitle={`${cobrancas.length} selecionada(s)`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="rounded-xl p-4 border border-emerald-500/30 bg-emerald-500/5">
-          <p className="text-2xl font-bold text-white tabular-nums">{vaoSair}</p>
-          <p className="text-sm text-slate-400">
-            {vaoSair === 1 ? "cliente vai receber" : "clientes vão receber"} a mensagem
-            {sumupAtivo ? " e o Pix exclusivo da cobrança" : " com a chave Pix CNPJ"}
-            {vaoSair > 0 && <>, uma por vez, em cerca de <b>{minutos} min</b></>}.
-          </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl p-4 border border-emerald-500/30 bg-emerald-500/5">
+            <p className="text-xs font-medium text-slate-400 inline-flex items-center gap-1.5">
+              <Users size={13} /> Vão receber
+            </p>
+            <p className="text-3xl font-bold text-white tabular-nums mt-1">{vaoSair}</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {vaoSair === 1 ? "pessoa" : "pessoas"} · {formatCurrency(valorTotal)}
+            </p>
+          </div>
+          <div className="rounded-xl p-4 border border-blue-500/30 bg-blue-500/5">
+            <p className="text-xs font-medium text-slate-400 inline-flex items-center gap-1.5">
+              <Clock size={13} /> Tempo estimado
+            </p>
+            <p className="text-xl font-bold text-white mt-1">{vaoSair ? tempoTexto : "—"}</p>
+            {vaoSair > 0 && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                termina por volta das {terminaEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
         </div>
+
+        <p className="text-xs text-slate-400">
+          {vaoSair > 0 ? (
+            <>
+              Uma mensagem por vez, com cerca de {intervaloSegundos}s entre cada cliente
+              {sumupAtivo ? ", cada uma com o Pix exclusivo da cobrança" : ", com a chave Pix CNPJ"}.
+              {naFrente > 0 && <> Antes destas, ainda saem <b>{naFrente}</b> que já estão na fila.</>}
+            </>
+          ) : (
+            "Nenhuma das selecionadas pode ser enviada agora. Veja os motivos abaixo."
+          )}
+        </p>
+
+        {cobrancas.length !== vaoSair && (
+          <p className="text-xs text-slate-500">
+            De {cobrancas.length} selecionada(s), {cobrancas.length - vaoSair} {cobrancas.length - vaoSair === 1 ? "fica" : "ficam"} de fora:
+          </p>
+        )}
 
         {!sumupAtivo && (
           <p className="text-xs text-amber-600 dark:text-amber-300">
@@ -2384,6 +2435,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
           cobrancas={enviarWa}
           sumupAtivo={sumupAtivo}
           intervaloSegundos={whatsapp?.intervaloSegundos ?? 20}
+          filaAtual={(filaWa?.fila || 0) + (filaWa?.enviando ? 1 : 0)}
           onClose={() => setEnviarWa(null)}
           onDone={(r) => {
             setEnviarWa(null);
