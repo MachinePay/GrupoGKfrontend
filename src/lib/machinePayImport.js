@@ -159,6 +159,9 @@ export function exportarCobrancasExcel(cobrancas, rotuloCompetencia) {
     "Valor da Mensalidade": c.valorMensalidade,
     "Valor da Mensalidade 36": c.valorMensalidade36,
     "Valor a pagar": c.valor,
+    "Valor do mes": c.valorMes ?? c.valor,
+    "Em aberto de meses anteriores": c.valorAnterior || 0,
+    "Meses em aberto somados": c.mesesAnteriores || 0,
     Situacao: c.situacao,
     "Pago em": c.pagoEm ? new Date(c.pagoEm).toLocaleDateString("pt-BR") : "",
     "Valor pago": c.valorPago ?? "",
@@ -166,7 +169,7 @@ export function exportarCobrancasExcel(cobrancas, rotuloCompetencia) {
   }));
 
   const ws = XLSX.utils.json_to_sheet(linhas);
-  ws["!cols"] = [{ wch: 45 }, { wch: 14 }, { wch: 14 }, ...Array(9).fill({ wch: 16 })];
+  ws["!cols"] = [{ wch: 45 }, { wch: 14 }, { wch: 14 }, ...Array(12).fill({ wch: 16 })];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Cobrancas");
   XLSX.writeFile(wb, `Machine Pay ${rotuloCompetencia}.xlsx`);

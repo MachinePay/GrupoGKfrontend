@@ -182,6 +182,10 @@ const SITUACAO = {
     label: "Cancelado",
     cls: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
   },
+  ACUMULADA: {
+    label: "Somada no mês seguinte",
+    cls: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30",
+  },
   ATIVO: {
     label: "Ativo",
     cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
@@ -1058,7 +1062,13 @@ function HistoricoModal({ clienteId, onClose }) {
                       <span className="text-sm font-semibold text-white tabular-nums">
                         {formatCurrency(c.valorPago ?? c.valor)}
                       </span>
-                      <Pill status={c.situacao} />
+                      <Pill status={c.situacao}>
+                        {c.status === "ACUMULADA" && c.acumuladaEmCompetencia
+                          ? `Somada em ${rotuloCompetencia(c.acumuladaEmCompetencia, true)}`
+                          : c.mesesAnteriores > 0
+                            ? `${SITUACAO[c.situacao]?.label ?? c.situacao} · ${c.mesesAnteriores + 1} meses`
+                            : undefined}
+                      </Pill>
                     </div>
                   </div>
                 ))}
@@ -1459,14 +1469,46 @@ function detalheItens(itens) {
   );
 }
 
+function nomeCompetencia(competencia) {
+  const [ano, mes] = String(competencia).split("-").map(Number);
+  return `${MESES[mes - 1].toLowerCase()}/${ano}`;
+}
+
+// Meses anteriores em aberto somados na cobranca, agrupados por mes.
+function mesesSomados(cobranca) {
+  const porMes = new Map();
+  for (const item of Array.isArray(cobranca?.anteriores) ? cobranca.anteriores : []) {
+    const atual = porMes.get(item.competencia) || { competencia: item.competencia, valor: 0, vencimento: item.vencimento };
+    atual.valor += Number(item.valor || 0);
+    if (new Date(item.vencimento) < new Date(atual.vencimento)) atual.vencimento = item.vencimento;
+    porMes.set(item.competencia, atual);
+  }
+  return [...porMes.values()].sort((a, b) => a.competencia.localeCompare(b.competencia));
+}
+
+// "Valor total" ou, com meses somados, cada mes em aberto + mensalidade + total.
+function linhasValor(cobranca, valor) {
+  const meses = mesesSomados(cobranca);
+  if (!meses.length) return `▪️ Valor total: ${formatCurrency(valor)}\n`;
+  return (
+    meses.map((m) => `▪️ Em aberto de ${nomeCompetencia(m.competencia)}: ${formatCurrency(m.valor)}\n`).join("") +
+    `▪️ Mensalidade de ${nomeCompetencia(cobranca.competencia)}: ${formatCurrency(cobranca.valorMes ?? valor)}\n` +
+    `▪️ Valor total: ${formatCurrency(valor)}\n`
+  );
+}
+
 // Mensagem para quem ja passou do vencimento (tom de alerta de bloqueio).
-function mensagemAtraso({ dias, maquinas, valor, diaVencimento, itens }) {
+function mensagemAtraso({ dias, maquinas, valor, diaVencimento, itens, cobranca }) {
+  const qtdMeses = mesesSomados(cobranca).length;
+  const abertura = qtdMeses
+    ? `Identificamos ${qtdMeses} ${qtdMeses === 1 ? "mensalidade" : "mensalidades"} em aberto, com ${dias} ${dias === 1 ? "dia" : "dias"} de atraso. Somamos tudo nesta cobrança:\n\n`
+    : `Identificamos que a mensalidade abaixo permanece em aberto, com ${dias} ${dias === 1 ? "dia" : "dias"} de atraso:\n\n`;
   return (
     "Olá! Tudo bem?\n\n" +
     "MachinePay | Financeiro\n\n" +
-    `Identificamos que a mensalidade abaixo permanece em aberto, com ${dias} ${dias === 1 ? "dia" : "dias"} de atraso:\n\n` +
+    abertura +
     `▪️ Equipamentos ativos: ${maquinas}\n` +
-    `▪️ Valor total: ${formatCurrency(valor)}\n` +
+    linhasValor(cobranca, valor) +
     `▪️ Vencimento: dia ${diaVencimento}\n\n` +
     detalheItens(itens) +
     "⚠️ Evite o bloqueio do cadastro e a suspensão dos serviços. Pedimos que regularize o pagamento para manter seus equipamentos conectados à MachinePay.\n\n" +
@@ -1490,13 +1532,16 @@ function mensagemCobranca(cobranca) {
   const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36 + (cobranca.maquinasParceria || 0);
   const dia = new Date(cobranca.vencimento).getUTCDate();
 
-  if (cobranca.situacao === "ATRASADO") {
+  const somados = mesesSomados(cobranca);
+  if (cobranca.situacao === "ATRASADO" || somados.length) {
     return mensagemAtraso({
-      dias: diasDeAtraso(cobranca.vencimento),
+      // Com meses somados, o atraso conta do vencimento mais antigo em aberto.
+      dias: diasDeAtraso(somados.length ? somados[0].vencimento : cobranca.vencimento),
       maquinas,
       valor: cobranca.valor,
       diaVencimento: dia,
       itens: cobranca.itens,
+      cobranca,
     });
   }
 
@@ -1505,7 +1550,7 @@ function mensagemCobranca(cobranca) {
     "MachinePay | Financeiro\n\n" +
     "Segue o lembrete da sua mensalidade:\n\n" +
     `▪️ Equipamentos ativos: ${maquinas}\n` +
-    `▪️ Valor total: ${formatCurrency(cobranca.valor)}\n` +
+    linhasValor(cobranca, cobranca.valor) +
     `▪️ Vencimento: dia ${dia}\n\n` +
     detalheItens(cobranca.itens) +
     MENSAGEM_RODAPE
@@ -1530,7 +1575,7 @@ function mensagemPixSumup(cobranca, copiaCola) {
     "MachinePay | Financeiro\n\n" +
     "Segue a sua mensalidade:\n\n" +
     `▪️ Equipamentos ativos: ${maquinas}\n` +
-    `▪️ Valor total: ${formatCurrency(cobranca.valor)}\n` +
+    linhasValor(cobranca, cobranca.valor) +
     `▪️ Vencimento: dia ${dia}\n\n` +
     detalheItens(cobranca.itens) +
     "💳 Pague com o Pix copia e cola abaixo. A baixa é automática, não precisa enviar comprovante:\n\n" +
@@ -1972,7 +2017,10 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
       invalidar();
       toast.show(
         res.data.geradas
-          ? `${res.data.geradas} cobranças geradas para ${rotuloCompetencia(competencia)}`
+          ? `${res.data.geradas} cobranças geradas para ${rotuloCompetencia(competencia)}` +
+              (res.data.comAtrasoSomado
+                ? ` · ${res.data.comAtrasoSomado} com meses em aberto somados (${formatCurrency(res.data.valorSomado)})`
+                : "")
           : "Nenhuma cobrança nova para gerar",
       );
     },
@@ -2004,9 +2052,10 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   );
 
   const contagem = useMemo(() => {
-    const c = { TODAS: doDia.length, ABERTAS: 0, ATRASADO: 0, PAGO: 0, CANCELADO: 0 };
+    const c = { TODAS: doDia.length, ABERTAS: 0, ATRASADO: 0, PAGO: 0, CANCELADO: 0, ACUMULADA: 0, SOMADAS: 0 };
     for (const item of doDia) {
       if (item.situacao === "PENDENTE" || item.situacao === "ATRASADO") c.ABERTAS += 1;
+      if (item.status === "PENDENTE" && item.mesesAnteriores > 0) c.SOMADAS += 1;
       if (c[item.situacao] !== undefined) c[item.situacao] += 1;
     }
     return c;
@@ -2016,7 +2065,8 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
     const termo = normalizarBusca(busca.trim());
     return doDia.filter((c) => {
       if (filtro === "ABERTAS" && !["PENDENTE", "ATRASADO"].includes(c.situacao)) return false;
-      if (!["TODAS", "ABERTAS"].includes(filtro) && c.situacao !== filtro) return false;
+      if (filtro === "SOMADAS" && !(c.status === "PENDENTE" && c.mesesAnteriores > 0)) return false;
+      if (!["TODAS", "ABERTAS", "SOMADAS"].includes(filtro) && c.situacao !== filtro) return false;
       return !termo || normalizarBusca(`${c.cliente.nome} ${c.cliente.telefone}`).includes(termo);
     });
   }, [doDia, filtro, busca]);
@@ -2088,7 +2138,8 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                 {dados.clientesSemCobranca} cliente(s) ativo(s) sem cobrança em {rotuloCompetencia(competencia)}
               </p>
               <p className="text-xs text-slate-500">
-                Gere as cobranças do mês com base nas máquinas e valores atuais de cada cliente.
+                Gere as cobranças do mês com base nas máquinas e valores atuais de cada cliente. O que
+                estiver vencido e não pago dos meses anteriores é somado na cobrança nova.
               </p>
             </div>
           </div>
@@ -2102,7 +2153,15 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
       {cobrancas.length > 0 && resumo && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-            <Kpi icon={CircleDollarSign} label="Previsto no mês" value={formatCurrency(resumo.previsto)} detail={`${resumo.quantidade} cobranças · ${resumo.maquinas} máquinas`} />
+            <Kpi
+              icon={CircleDollarSign}
+              label="Previsto no mês"
+              value={formatCurrency(resumo.previsto)}
+              detail={
+                `${resumo.quantidade} cobranças · ${resumo.maquinas} máquinas` +
+                (resumo.valorAnterior > 0 ? ` · inclui ${formatCurrency(resumo.valorAnterior)} de meses anteriores` : "")
+              }
+            />
             <Kpi icon={CheckCircle2} tone="green" label="Recebido" value={formatCurrency(resumo.recebido)} detail={`${resumo.qtdPagas} pagas · ${pct}%`}>
               <div className="mt-2 h-1.5 rounded-full bg-slate-500/15 overflow-hidden">
                 <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -2148,8 +2207,14 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
               <Chip active={filtro === "ABERTAS"} onClick={() => setFiltro("ABERTAS")} count={contagem.ABERTAS}>Em aberto</Chip>
               <Chip active={filtro === "ATRASADO"} onClick={() => setFiltro("ATRASADO")} count={contagem.ATRASADO}>Atrasadas</Chip>
               <Chip active={filtro === "PAGO"} onClick={() => setFiltro("PAGO")} count={contagem.PAGO}>Pagas</Chip>
+              {contagem.SOMADAS > 0 && (
+                <Chip active={filtro === "SOMADAS"} onClick={() => setFiltro("SOMADAS")} count={contagem.SOMADAS}>Com meses em aberto</Chip>
+              )}
               {contagem.CANCELADO > 0 && (
                 <Chip active={filtro === "CANCELADO"} onClick={() => setFiltro("CANCELADO")} count={contagem.CANCELADO}>Canceladas</Chip>
+              )}
+              {contagem.ACUMULADA > 0 && (
+                <Chip active={filtro === "ACUMULADA"} onClick={() => setFiltro("ACUMULADA")} count={contagem.ACUMULADA}>Somadas no mês seguinte</Chip>
               )}
             </div>
             {sumupAtivo && (
@@ -2273,12 +2338,39 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                       </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap">
                         <p className="font-semibold text-white tabular-nums">{formatCurrency(c.valor)}</p>
+                        {c.mesesAnteriores > 0 && (
+                          <p
+                            className="text-[11px] text-slate-500 tabular-nums"
+                            title={mesesSomados(c).map((m) => `${nomeCompetencia(m.competencia)}: ${formatCurrency(m.valor)}`).join("\n")}
+                          >
+                            {formatCurrency(c.valorMes)} do mês + {formatCurrency(c.valorAnterior)} em aberto
+                          </p>
+                        )}
                         {c.status === "PAGO" && c.valorPago !== c.valor && (
                           <p className="text-xs text-slate-500">pago {formatCurrency(c.valorPago)}</p>
                         )}
                       </td>
                       <td className="px-3 py-2.5">
-                        <Pill status={c.situacao} />
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Pill status={c.situacao}>
+                            {c.status === "ACUMULADA" && c.acumuladaEmCompetencia
+                              ? `Somada em ${rotuloCompetencia(c.acumuladaEmCompetencia, true)}`
+                              : undefined}
+                          </Pill>
+                          {c.mesesAnteriores > 0 && c.status !== "ACUMULADA" && (
+                            <span
+                              className={cn(
+                                "inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap",
+                                c.status === "PAGO"
+                                  ? "bg-slate-500/10 text-slate-500 border-slate-500/30"
+                                  : "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30",
+                              )}
+                              title={mesesSomados(c).map((m) => nomeCompetencia(m.competencia)).join(", ")}
+                            >
+                              {c.status === "PAGO" ? "Quitou" : "Deve"} {c.mesesAnteriores + 1} {c.mesesAnteriores + 1 === 1 ? "mês" : "meses"}
+                            </span>
+                          )}
+                        </div>
                         {c.pagoEm && (
                           <p className="text-[11px] text-slate-500 mt-0.5">
                             {formatDate(c.pagoEm)}{c.formaPagamento && ` · ${c.formaPagamento}`}
@@ -2344,7 +2436,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                                     },
                                   }),
                               },
-                              c.status !== "CANCELADO" && {
+                              c.status !== "CANCELADO" && c.status !== "ACUMULADA" && {
                                 label: "Cancelar cobrança",
                                 icon: Ban,
                                 onClick: () =>
@@ -2369,14 +2461,17 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                                   toast.show("Cobrança reaberta");
                                 },
                               },
-                              {
+                              c.status !== "ACUMULADA" && {
                                 label: "Excluir",
                                 icon: Trash2,
                                 danger: true,
                                 onClick: () =>
                                   setConfirmar({
                                     title: "Excluir cobrança?",
-                                    message: "Ela pode ser gerada novamente depois pelo botão Gerar cobranças.",
+                                    message:
+                                      c.mesesAnteriores > 0
+                                        ? "Os meses em aberto somados nela voltam para as cobranças de origem. Ela pode ser gerada novamente pelo botão Gerar cobranças."
+                                        : "Ela pode ser gerada novamente depois pelo botão Gerar cobranças.",
                                     confirmLabel: "Excluir",
                                     danger: true,
                                     onConfirm: async () => {
