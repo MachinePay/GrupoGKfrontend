@@ -37,7 +37,7 @@ export default function AppShell() {
           onMenuClick={() => setMenuAberto(true)}
         />
         <main
-          className="flex-1 min-w-0 p-3 sm:p-4 lg:p-6"
+          className="flex-1 min-w-0 overflow-x-clip p-3 sm:p-4 lg:p-6"
           style={{
             backgroundColor: "var(--bg-primary)",
             paddingBottom: "max(1rem, env(safe-area-inset-bottom))",

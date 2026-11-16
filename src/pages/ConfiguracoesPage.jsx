@@ -1858,7 +1858,7 @@ export default function ConfiguracoesPage() {
         </p>
       </div>
 
-      <div className="inline-flex max-w-full overflow-x-auto gap-1 p-1 glass rounded-xl">
+      <div className="inline-flex max-w-full overflow-x-auto no-scrollbar gap-1 p-1 glass rounded-xl">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (

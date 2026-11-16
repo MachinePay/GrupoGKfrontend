@@ -693,7 +693,7 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
         <div className="rounded-xl p-4 space-y-4" style={{ background: "var(--input-bg)" }}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-sm font-semibold text-white">Máquinas e mensalidade</p>
-            <div className="flex items-center gap-1 rounded-lg glass p-0.5 overflow-x-auto whitespace-nowrap max-w-full [&>*]:shrink-0">
+            <div className="flex items-center gap-1 rounded-lg glass p-0.5 overflow-x-auto no-scrollbar whitespace-nowrap max-w-full [&>*]:shrink-0">
               <Chip active={modo === "maquina"} onClick={() => setModo("maquina")}>
                 Por máquina
               </Chip>
@@ -1004,7 +1004,7 @@ function HistoricoModal({ clienteId, onClose }) {
             ))}
           </div>
 
-          <div className="flex gap-1 glass rounded-lg p-0.5 w-fit max-w-full overflow-x-auto whitespace-nowrap [&>*]:shrink-0">
+          <div className="flex gap-1 glass rounded-lg p-0.5 w-fit max-w-full overflow-x-auto no-scrollbar whitespace-nowrap [&>*]:shrink-0">
             <Chip active={aba === "cobrancas"} onClick={() => setAba("cobrancas")} count={data.cobrancas.length}>
               Cobranças
             </Chip>
@@ -2202,7 +2202,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
         <div className="glass rounded-2xl card-shadow">
           <div className="flex flex-wrap items-center gap-3 p-3 border-b border-[var(--border-color)]">
             <SearchBox value={busca} onChange={setBusca} placeholder="Buscar cliente ou telefone..." />
-            <div className="flex gap-1 max-w-full overflow-x-auto whitespace-nowrap [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
+            <div className="flex gap-1 max-w-full overflow-x-auto no-scrollbar whitespace-nowrap [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
               <Chip active={filtro === "TODAS"} onClick={() => setFiltro("TODAS")} count={contagem.TODAS}>Todas</Chip>
               <Chip active={filtro === "ABERTAS"} onClick={() => setFiltro("ABERTAS")} count={contagem.ABERTAS}>Em aberto</Chip>
               <Chip active={filtro === "ATRASADO"} onClick={() => setFiltro("ATRASADO")} count={contagem.ATRASADO}>Atrasadas</Chip>
@@ -2797,7 +2797,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
       <div className="glass rounded-2xl card-shadow">
         <div className="flex flex-wrap items-center gap-3 p-3 border-b border-[var(--border-color)]">
           <SearchBox value={busca} onChange={setBusca} placeholder="Buscar por nome, telefone, documento..." />
-          <div className="flex gap-1 max-w-full overflow-x-auto whitespace-nowrap [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
+          <div className="flex gap-1 max-w-full overflow-x-auto no-scrollbar whitespace-nowrap [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
             <Chip active={filtro === "ATIVO"} onClick={() => setFiltro("ATIVO")} count={contagem.ATIVO}>Ativos</Chip>
             {cobrancaAtiva && (
               <Chip active={filtro === "DEVENDO"} onClick={() => setFiltro("DEVENDO")} count={contagem.DEVENDO}>Devendo</Chip>
@@ -3700,14 +3700,14 @@ export default function MachinePayPage() {
               : "Cadastro de clientes, máquinas e valores de mensalidade"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0">
           <AtualizarPainelButton toast={toast} />
           {cobrancaAtiva && (
-            <div className="flex items-center gap-1 rounded-xl glass p-1">
+            <div className="flex items-center justify-between gap-1 rounded-xl glass p-1 order-first w-full sm:order-none sm:w-auto">
               <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, -1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Mês anterior">
                 <ChevronLeft size={16} />
               </button>
-              <span className="px-2 min-w-[130px] text-center text-sm font-semibold text-white">
+              <span className="flex-1 sm:flex-none px-2 sm:min-w-[130px] text-center text-sm font-semibold text-white">
                 {rotuloCompetencia(competencia)}
               </span>
               <button onClick={() => setCompetencia((c) => deslocarCompetencia(c, 1))} className="p-1.5 rounded-lg text-slate-400 hover:bg-black/5 dark:hover:bg-white/5" title="Próximo mês">
@@ -3755,7 +3755,7 @@ export default function MachinePayPage() {
       )}
 
       {!configQuery.isLoading && (
-        <div className="flex gap-1 border-b border-[var(--border-color)] overflow-x-auto table-scroll">
+        <div className="flex gap-1 border-b border-[var(--border-color)] overflow-x-auto overflow-y-hidden no-scrollbar">
           {abas.map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}

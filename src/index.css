@@ -307,3 +307,12 @@ html[data-theme="dark"] {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Linhas de abas que rolam para o lado sem mostrar barra */
+.no-scrollbar {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

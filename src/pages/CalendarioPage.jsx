@@ -1145,7 +1145,7 @@ export default function CalendarioPage() {
                 placeholder="Todos os criadores"
               />
             </div>
-            <div className="flex gap-1 overflow-x-auto max-w-full">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar max-w-full">
               {STATUS_FILTER.map((s) => (
                 <button
                   key={s.value}
@@ -1160,7 +1160,7 @@ export default function CalendarioPage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-1 overflow-x-auto max-w-full">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar max-w-full">
               {TIPO_FILTER.map((s) => (
                 <button
                   key={s.value}
