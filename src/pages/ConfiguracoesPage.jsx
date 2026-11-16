@@ -165,10 +165,10 @@ function EmpresasTab() {
         {empresas.map((empresa) => (
           <div
             key={empresa.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 px-4 py-3 border-b border-white/5"
           >
             {editingId === empresa.id ? (
-              <div className="flex-1 flex items-center gap-2">
+              <div className="flex-1 flex flex-wrap items-center gap-2">
                 <Input
                   className="max-w-sm"
                   value={editingNome}
@@ -193,9 +193,9 @@ function EmpresasTab() {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <Building2 size={14} className="text-slate-400" />
-                  <p className="text-sm text-white font-medium">
+                  <p className="text-sm text-white font-medium break-words">
                     {empresa.nome}
                   </p>
                 </div>
@@ -329,7 +329,7 @@ function ContasTab() {
 
       {showForm && (
         <div className="glass rounded-xl p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Nome da Conta"
               value={form.nome}
@@ -350,7 +350,7 @@ function ContasTab() {
                 setForm((f) => ({ ...f, saldoInicial: e.target.value }))
               }
             />
-            <div className="col-span-2 flex flex-col gap-1">
+            <div className="sm:col-span-2 flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
                 Observações
               </label>
@@ -403,7 +403,7 @@ function ContasTab() {
         {contas.map((c) => (
           <div
             key={c.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 px-4 py-3 border-b border-white/5"
           >
             {editingId === c.id ? (
               <div className="w-full grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-2 items-center">
@@ -466,7 +466,7 @@ function ContasTab() {
               </div>
             ) : (
               <>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-white font-medium">
                     {c.banco} – {c.nome}
                   </p>
@@ -476,7 +476,7 @@ function ContasTab() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <span
                     className={`text-sm font-semibold tabular-nums ${c.saldoAtual >= 0 ? "text-emerald-400" : "text-red-400"}`}
                   >
@@ -557,7 +557,7 @@ function ProjetosTab() {
 
       {showForm && (
         <div className="glass rounded-xl p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Nome do Projeto"
               value={form.nome}
@@ -597,7 +597,7 @@ function ProjetosTab() {
         {projetos.map((p) => (
           <div
             key={p.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 px-4 py-3 border-b border-white/5"
           >
             <div>
               <p className="text-sm text-white font-medium">{p.nome}</p>
@@ -753,7 +753,7 @@ function UsuariosTab() {
 
       {showForm && (
         <div className="glass rounded-xl p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Nome"
               value={form.nome}
@@ -855,11 +855,11 @@ function UsuariosTab() {
         {usuarios.map((u) => (
           <div
             key={u.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 px-4 py-3 border-b border-white/5"
           >
-            <div>
+            <div className="min-w-0">
               <p className="text-sm text-white font-medium">{u.nome}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 break-words">
                 {u.email} · {u.perfil}
                 {u.contasBancarias?.length
                   ? ` · ${u.contasBancarias
@@ -1052,7 +1052,7 @@ function FornecedoresTab() {
         {fornecedores.map((f) => (
           <div
             key={f.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-white/5"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0 px-4 py-3 border-b border-white/5"
           >
             {editingId === f.id ? (
               <div className="w-full space-y-3">
@@ -1103,7 +1103,7 @@ function FornecedoresTab() {
               </div>
             ) : (
               <>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-white font-medium">{f.nome}</p>
                   {f.descricao && (
                     <p className="text-xs text-slate-500 truncate">
@@ -1111,7 +1111,7 @@ function FornecedoresTab() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => toggleMutation.mutate(f.id)}
                     className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -1617,15 +1617,15 @@ function SumupTab() {
           )}
           {contasFiltradas.map((conta) => (
             <div key={conta.id} className="glass rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">{conta.nome}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 break-words">
                     {conta.nomeConta ? `${conta.nomeConta} · ` : ""}
                     {conta.merchantCode || "sem merchant code"} · {conta.apiKeyMascarada}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex flex-wrap shrink-0 gap-2">
                   <button
                     onClick={() => setAberta(aberta === conta.id ? null : conta.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-500"
@@ -1858,14 +1858,14 @@ export default function ConfiguracoesPage() {
         </p>
       </div>
 
-      <div className="inline-flex gap-1 p-1 glass rounded-xl">
+      <div className="inline-flex max-w-full overflow-x-auto gap-1 p-1 glass rounded-xl">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? "bg-blue-600 text-white"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"

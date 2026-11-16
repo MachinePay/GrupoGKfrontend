@@ -25,16 +25,16 @@ export function SaldoCard({
   return (
     <div
       className={cn(
-        "glass card-shadow rounded-2xl p-5 bg-linear-to-br",
+        "glass card-shadow rounded-2xl p-4 sm:p-5 bg-linear-to-br min-w-0",
         colorMap[color],
       )}
     >
-      <div className="flex items-start justify-between mb-4">
-        <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">
+      <div className="flex items-start justify-between gap-3 mb-3 sm:mb-4">
+        <p className="text-sm font-medium text-slate-400 uppercase tracking-wider min-w-0">
           {title}
         </p>
         {Icon && (
-          <span className={cn("p-2 rounded-xl", iconColor[color])}>
+          <span className={cn("p-2 rounded-xl shrink-0", iconColor[color])}>
             <Icon size={18} />
           </span>
         )}
@@ -42,7 +42,9 @@ export function SaldoCard({
       {loading ? (
         <div className="h-8 w-32 bg-white/10 rounded animate-pulse" />
       ) : (
-        <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
+        <p className="text-xl sm:text-2xl font-bold text-white tabular-nums break-words">
+          {value}
+        </p>
       )}
       {trend && <p className="mt-1 text-xs text-slate-500">{trend}</p>}
     </div>

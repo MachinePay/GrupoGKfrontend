@@ -363,7 +363,7 @@ export default function ConciliacaoPage() {
       </div>
 
       {/* Controls */}
-      <div className="glass card-shadow rounded-2xl p-5 space-y-4">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Empresa"
@@ -389,7 +389,7 @@ export default function ConciliacaoPage() {
               !empresasIntegradas.length ||
               syncMutation.isPending
             }
-            className="btn-primary mt-6"
+            className="btn-primary md:mt-6"
           >
             {!empresaSelecionada?.syncDisponivel
               ? "Sincronização indisponível"
@@ -476,7 +476,7 @@ export default function ConciliacaoPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Total Pendente</p>
-            <p className="text-2xl font-bold text-white mt-1">
+            <p className="text-xl sm:text-2xl font-bold text-white mt-1">
               {pendenciasFiltradas.length}
             </p>
             <p className="text-xs text-slate-500 mt-2">item(ns)</p>
@@ -485,7 +485,7 @@ export default function ConciliacaoPage() {
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Valor Total</p>
             <p
-              className={`text-2xl font-bold mt-1 ${
+              className={`text-xl sm:text-2xl font-bold mt-1 break-words ${
                 valorTotalPendente > 0
                   ? "text-emerald-300"
                   : valorTotalPendente < 0
@@ -499,7 +499,7 @@ export default function ConciliacaoPage() {
 
           <div className="glass card-shadow rounded-2xl p-4">
             <p className="text-sm text-slate-400">Origem</p>
-            <p className="text-2xl font-bold text-blue-400 mt-1">
+            <p className="text-xl sm:text-2xl font-bold text-blue-400 mt-1 break-words">
               {origemSelecionadaLabel}
             </p>
           </div>
@@ -507,7 +507,7 @@ export default function ConciliacaoPage() {
       )}
 
       {/* Lista de Pendências */}
-      <div className="glass card-shadow rounded-2xl p-5 space-y-3">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-5 space-y-3">
         <h2 className="text-base font-semibold text-white">
           Itens Pendentes ({pendenciasFiltradas.length})
         </h2>
@@ -530,20 +530,20 @@ export default function ConciliacaoPage() {
             {pendenciasFiltradas.map((item) => (
               <div
                 key={item.id}
-                className="border border-white/10 rounded-lg p-4 space-y-3 hover:border-white/20 transition"
+                className="border border-white/10 rounded-lg p-3 sm:p-4 space-y-3 hover:border-white/20 transition"
               >
                 {/* Header do Item */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div>
-                      <p className="font-medium text-white">{item.titulo}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="min-w-0">
+                      <p className="font-medium text-white break-words">{item.titulo}</p>
                       <p className="text-xs text-slate-400">
                         {item.empresa?.nome}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge
                       label={`VIA ${origemSelecionadaLabel.toUpperCase()}`}
                       variant="agarramais"
@@ -565,7 +565,7 @@ export default function ConciliacaoPage() {
                 </div>
 
                 {/* Info do Item */}
-                <div className="grid grid-cols-4 gap-3 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                   <div>
                     <p className="text-slate-500">Data</p>
                     <p className="font-medium text-white">
@@ -605,7 +605,7 @@ export default function ConciliacaoPage() {
 
                 {/* Detalhes */}
                 {item.descricao && (
-                  <p className="text-xs text-slate-400 border-t border-white/10 pt-3">
+                  <p className="text-xs text-slate-400 border-t border-white/10 pt-3 break-words">
                     {item.descricao}
                   </p>
                 )}
@@ -667,18 +667,22 @@ export default function ConciliacaoPage() {
       </div>
 
       {modalState.item && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 p-4 sm:p-5 shadow-2xl space-y-4">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-lg font-semibold text-white">
                   {getTituloModal(modalState.item, modalState.mode)}
                 </h3>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-1 break-words">
                   {modalState.item.titulo}
                 </p>
               </div>
-              <button type="button" onClick={fecharModal} className="btn-ghost">
+              <button
+                type="button"
+                onClick={fecharModal}
+                className="btn-ghost shrink-0"
+              >
                 Fechar
               </button>
             </div>
@@ -758,12 +762,12 @@ export default function ConciliacaoPage() {
             </div>
 
             {modalState.item.descricao && (
-              <p className="text-sm text-slate-400 rounded-xl border border-white/10 p-3">
+              <p className="text-sm text-slate-400 rounded-xl border border-white/10 p-3 break-words">
                 {modalState.item.descricao}
               </p>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
               <button type="button" onClick={fecharModal} className="btn-ghost">
                 Cancelar
               </button>

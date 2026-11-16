@@ -89,8 +89,8 @@ export default function FilterBar({
       </div>
 
       {/* Agrupamento e Botão Atualizar */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
+      <div className="flex items-end gap-3 sm:items-center sm:gap-4">
+        <div className="flex-1 min-w-0">
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
             Agrupamento
           </label>

@@ -32,17 +32,19 @@ function MetricCard({
 
   return (
     <div
-      className={`bg-linear-to-br ${colorClasses[color]} backdrop-blur border rounded-lg p-4`}
+      className={`bg-linear-to-br ${colorClasses[color]} backdrop-blur border rounded-lg p-4 min-w-0`}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             {title}
           </p>
           {loading ? (
             <div className="mt-2 h-8 bg-slate-700/30 rounded animate-pulse"></div>
           ) : (
-            <p className="mt-2 text-2xl font-bold text-white">{value}</p>
+            <p className="mt-2 text-xl sm:text-2xl font-bold text-white break-words">
+              {value}
+            </p>
           )}
           {subtext && <p className="mt-1 text-xs text-slate-400">{subtext}</p>}
         </div>
@@ -108,14 +110,14 @@ export default function MetricsCards({ metricas, isLoading }) {
               className="text-yellow-400 shrink-0 mt-1"
               size={20}
             />
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Ponto de Atenção
               </p>
-              <p className="mt-2 text-white font-semibold">
+              <p className="mt-2 text-white font-semibold break-words">
                 {pontoAtencao.categoria}
               </p>
-              <div className="mt-2 grid grid-cols-3 gap-4 text-xs">
+              <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-4 text-xs [&>div]:min-w-0 [&_p]:break-words">
                 <div>
                   <p className="text-slate-400">Mês Anterior</p>
                   <p className="text-yellow-400 font-semibold">

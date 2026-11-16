@@ -80,7 +80,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-navy-900 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center py-8 sm:py-0 bg-white dark:bg-navy-900 relative overflow-hidden">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-blue-600/10 blur-3xl" />
@@ -93,7 +93,7 @@ export default function LoginPage() {
         <LoginLanguageSwitcher />
 
         {/* Logo / Brand */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-blue-500 to-blue-700 mb-4 shadow-lg shadow-blue-900/40">
             <span className="text-2xl font-black text-white">GK</span>
           </div>
@@ -106,7 +106,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="glass card-shadow rounded-2xl p-8 space-y-5">
+        <div className="glass card-shadow rounded-2xl p-6 sm:p-8 space-y-5">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             {t("LOGIN_CARD_TITLE", "Entrar na sua conta")}
           </h2>

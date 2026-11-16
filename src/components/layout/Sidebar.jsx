@@ -14,6 +14,7 @@ import {
   Globe,
   CreditCard,
   ChevronDown,
+  X,
 } from "lucide-react";
 import logoGrupoGk from "../../assets/Logo Grupo Gk .png";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -85,7 +86,7 @@ function LanguageSwitcher() {
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ open = false, onClose = () => {} }) {
   const { user, logout, isAdmin } = useAuth();
   const { t } = useTraducao();
   const isCaixa = user?.perfil === "CAIXA";
@@ -105,9 +106,27 @@ export default function Sidebar() {
       : t("SIDEBAR_FINANCEIRO", "Financeiro");
 
   return (
+    <>
+    {/* Fundo escuro do menu no celular */}
+    <div
+      onClick={onClose}
+      aria-hidden="true"
+      className={cn(
+        "fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-200 lg:hidden",
+        open ? "opacity-100" : "opacity-0 pointer-events-none",
+      )}
+    />
     <aside
-      className="fixed inset-y-0 left-0 z-40 flex flex-col w-64 glass card-shadow border-r border-slate-200 dark:border-white/5"
-      style={{ backgroundColor: "var(--bg-primary)" }}
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex flex-col w-72 max-w-[85vw] lg:w-64 glass card-shadow border-r border-slate-200 dark:border-white/5",
+        "transition-transform duration-200 ease-out lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full",
+      )}
+      style={{
+        backgroundColor: "var(--bg-primary)",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-200 dark:border-white/5">
@@ -126,6 +145,13 @@ export default function Sidebar() {
             {t("SIDEBAR_FINANCEIRO", "Financeiro")}
           </p>
         </div>
+        <button
+          onClick={onClose}
+          aria-label="Fechar menu"
+          className="ml-auto p-2 -mr-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 lg:hidden"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Nav */}
@@ -135,9 +161,10 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === "/"}
+            onClick={onClose}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
+                "flex items-center gap-3 px-3 py-3 lg:py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
                 isActive
                   ? "bg-blue-600/20 text-blue-600 dark:text-blue-300 border border-blue-500/25"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5",
@@ -178,5 +205,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

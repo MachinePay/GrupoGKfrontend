@@ -2,7 +2,7 @@ import { cn } from "../../lib/utils.js";
 
 export function Input({ label, error, className, ...props }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       {label && (
         <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
           {label}
@@ -26,7 +26,7 @@ export function Select({
   ...props
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       {label && (
         <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
           {label}

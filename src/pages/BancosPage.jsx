@@ -135,8 +135,8 @@ export default function BancosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           {contaId && (
             <button
               onClick={clearConta}
@@ -146,8 +146,8 @@ export default function BancosPage() {
               <ArrowLeft size={16} />
             </button>
           )}
-          <div>
-            <h1 className="text-xl font-bold text-white">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-white break-words">
               {selectedConta
                 ? `${selectedConta.banco} – ${selectedConta.nome}`
                 : "Contas Bancárias"}
@@ -161,7 +161,7 @@ export default function BancosPage() {
         </div>
         <button
           onClick={handleRefresh}
-          className="btn-ghost flex items-center gap-1.5 text-xs"
+          className="btn-ghost flex items-center gap-1.5 text-xs self-start sm:self-auto"
         >
           <RefreshCw size={13} /> Atualizar
         </button>
@@ -183,7 +183,7 @@ export default function BancosPage() {
             {loadContas ? (
               <div className="h-8 w-40 bg-white/10 rounded animate-pulse" />
             ) : (
-              <p className="text-3xl font-bold text-white tabular-nums">
+              <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums break-words">
                 {formatCurrency(saldoGeral)}
               </p>
             )}
@@ -317,8 +317,8 @@ export default function BancosPage() {
               Filtrar por período
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-400">De</label>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-xs text-slate-400 w-8 sm:w-auto">De</label>
                 <input
                   type="date"
                   value={dataInicio}
@@ -326,12 +326,11 @@ export default function BancosPage() {
                     setDataInicio(e.target.value);
                     setPage(1);
                   }}
-                  className="input-base text-sm"
-                  style={{ width: 155 }}
+                  className="input-base text-sm flex-1 min-w-0 sm:flex-none sm:w-[155px]"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-400">Até</label>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-xs text-slate-400 w-8 sm:w-auto">Até</label>
                 <input
                   type="date"
                   value={dataFim}
@@ -339,22 +338,20 @@ export default function BancosPage() {
                     setDataFim(e.target.value);
                     setPage(1);
                   }}
-                  className="input-base text-sm"
-                  style={{ width: 155 }}
+                  className="input-base text-sm flex-1 min-w-0 sm:flex-none sm:w-[155px]"
                 />
               </div>
 
               {/* Trocar conta */}
               {contas.length > 1 && (
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
                   <label className="text-xs text-slate-400 whitespace-nowrap">
                     Conta
                   </label>
                   <select
                     value={contaId}
                     onChange={(e) => selectConta(e.target.value)}
-                    className="input-base text-sm"
-                    style={{ minWidth: 200 }}
+                    className="input-base text-sm flex-1 min-w-0 sm:flex-none sm:min-w-[200px]"
                   >
                     {contas.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -376,7 +373,7 @@ export default function BancosPage() {
 
           {/* Tabela de lançamentos */}
           <div className="glass card-shadow rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+            <div className="px-4 sm:px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-white">Lançamentos</h3>
               <span className="text-xs text-slate-400">
                 {pagination.total ?? 0} registro(s)
@@ -399,8 +396,8 @@ export default function BancosPage() {
                 Nenhum lançamento encontrado para este período.
               </div>
             ) : (
-              <div className="divide-y divide-white/5 overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="divide-y divide-white/5 table-scroll">
+                <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="text-xs text-slate-500 uppercase tracking-wider">
                       <th className="text-left px-5 py-3 font-medium">Data</th>
@@ -489,7 +486,7 @@ export default function BancosPage() {
 
             {/* Paginação */}
             {pagination.totalPages > 1 && (
-              <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between">
+              <div className="px-4 sm:px-5 py-3 border-t border-white/5 flex items-center justify-between gap-3">
                 <span className="text-xs text-slate-500">
                   Página {pagination.page} de {pagination.totalPages}
                 </span>

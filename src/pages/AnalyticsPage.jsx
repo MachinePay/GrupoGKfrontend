@@ -37,8 +37,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       {/* Título e Botões */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-white">
             Analytics & Performance
           </h1>
@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
       <MetricsCards metricas={analytics?.metricas} isLoading={isLoading} />
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Evolução */}
         <EvolutionChart
           data={analytics?.graficos?.evolucao}
@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Distribuição e Ranking */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Distribuição de Receitas */}
         <RevenueDistributionChart
           data={analytics?.graficos?.distribuicaoReceitas}

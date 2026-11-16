@@ -187,10 +187,10 @@ export default function LancamentosPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4 sm:gap-6 items-start">
         <MovimentacaoForm />
 
-        <section className="glass card-shadow rounded-2xl p-5 space-y-4">
+        <section className="glass card-shadow rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-white">
               Histórico de Movimentações
@@ -201,7 +201,7 @@ export default function LancamentosPage() {
           </div>
 
           <form onSubmit={applyFilters} className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <Select
                 label="Empresa"
                 value={draftFilters.empresaId}
@@ -242,7 +242,7 @@ export default function LancamentosPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <Select
                 label="Status"
                 value={draftFilters.status}
@@ -270,7 +270,7 @@ export default function LancamentosPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <Input
                 label="Data inicial"
                 type="date"
@@ -289,13 +289,13 @@ export default function LancamentosPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="btn-ghost"
+                className="btn-ghost flex-1 sm:flex-none"
               >
                 Limpar
               </button>
               <button
                 type="submit"
-                className="btn-primary"
+                className="btn-primary flex-1 sm:flex-none"
                 disabled={isLoading}
               >
                 Filtrar
@@ -317,7 +317,65 @@ export default function LancamentosPage() {
             </p>
           )}
 
-          <div className="overflow-x-auto rounded-xl border border-white/10">
+          {/* Lista compacta (mobile) */}
+          <div className="sm:hidden space-y-2">
+            {isLoading && (
+              <p className="py-8 text-center text-sm text-slate-500">
+                Carregando histórico...
+              </p>
+            )}
+
+            {!isLoading && items.length === 0 && (
+              <p className="py-8 text-center text-sm text-slate-500">
+                Nenhuma movimentação encontrada para os filtros aplicados.
+              </p>
+            )}
+
+            {!isLoading &&
+              items.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-white/10 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {item.referencia ?? item.categoria ?? "-"}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {formatDate(item.data)} · {item.empresa?.nome ?? "-"}
+                      </p>
+                    </div>
+                    <p className="font-semibold tabular-nums whitespace-nowrap">
+                      {formatCurrency(item.valor)}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400 break-words">
+                    {item.tipo}
+                    {item.categoria ? ` · ${item.categoria}` : ""}
+                    {item.tipoDespesa ? ` · ${item.tipoDespesa}` : ""} ·{" "}
+                    {item.status}
+                  </p>
+                  <p className="text-xs text-slate-500 break-words">
+                    {resolveContaLabel(item)}
+                    {item.canalOrigem ? ` · ${item.canalOrigem}` : ""}
+                    {item.centroOperacao ? ` · ${item.centroOperacao}` : ""}
+                  </p>
+                  <div className="mt-1.5 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item)}
+                      disabled={deleteMutation.isPending}
+                      className="btn-ghost text-xs text-red-400 hover:text-red-300"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          <div className="hidden sm:block table-scroll rounded-xl border border-white/10">
             <table className="w-full min-w-230 text-sm">
               <thead className="bg-slate-900/60 text-slate-400">
                 <tr>
@@ -399,7 +457,7 @@ export default function LancamentosPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center justify-between gap-3 pt-1">
             <p className="text-xs text-slate-400">
               Página {pagination?.page ?? 1} de {pagination?.totalPages ?? 1}
             </p>

@@ -214,7 +214,7 @@ function SelfMachineFormModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto">
       <div className="mx-auto max-w-4xl rounded-2xl border border-slate-200 dark:border-[#2f2f2f] bg-white dark:bg-[#121212] text-slate-900 dark:text-[#f3f3f3] shadow-2xl shadow-black/10 dark:shadow-black/60">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
           <h2 className="text-lg font-semibold tracking-wide">
             {initialData?.id ? "Editar SaaS" : "Novo SaaS"}
           </h2>
@@ -227,7 +227,7 @@ function SelfMachineFormModal({
           </button>
         </div>
 
-        <form onSubmit={submit} className="p-6 space-y-5">
+        <form onSubmit={submit} className="p-4 sm:p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Nome do Cliente"
@@ -464,10 +464,10 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
   const status = getStatusVisual(data);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
       <div className="mx-auto max-w-3xl rounded-2xl bg-white dark:bg-[#131313] border border-slate-200 dark:border-[#2c2c2c] text-slate-900 dark:text-[#f2f2f2]">
-        <div className="p-5 border-b border-slate-200 dark:border-[#2d2d2d] flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-[#2d2d2d] flex items-start sm:items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
             <h3 className="text-lg font-semibold">Detalhes do Contrato SaaS</h3>
             <span
               className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] ${STATUS_STYLE[status] || "bg-slate-100 dark:bg-[#2c2c2c] text-slate-600 dark:text-[#ddd] border-slate-300 dark:border-[#4a4a4a]"}`}
@@ -484,8 +484,8 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div className="p-4 sm:p-5 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm break-words">
             <p>
               <span className="text-slate-500 dark:text-[#999]">
                 Cliente:
@@ -605,7 +605,7 @@ function DetalhesModal({ data, onClose, onGerarPedido }) {
                   {formatCurrency(data.custoOutros, "USD")}
                 </p>
               </div>
-              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#242424] flex items-center justify-between text-sm">
+              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#242424] flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
                 <span className="text-slate-500 dark:text-[#999]">
                   Custo Total
                 </span>
@@ -672,7 +672,7 @@ function KpiCard({
       <p className="text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-[#9a9a9a]">
         {label}
       </p>
-      <p className={`text-xl font-semibold ${color}`}>{value}</p>
+      <p className={`text-lg sm:text-xl font-semibold break-words ${color}`}>{value}</p>
       {sub && (
         <p className="text-xs text-slate-400 dark:text-[#666]">{sub}</p>
       )}
@@ -717,12 +717,12 @@ function RelatorioModal({ isOpen, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/75 backdrop-blur-sm overflow-y-auto p-3 sm:p-6">
       <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 dark:border-[#2e2e2e] bg-white dark:bg-[#111] text-slate-900 dark:text-[#f3f3f3] shadow-2xl shadow-black/10 dark:shadow-black/70">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-[#d0862b]">
               SelfMachine
             </p>
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-lg sm:text-xl font-semibold">
               Relatório de Operações SaaS
             </h2>
           </div>
@@ -735,7 +735,7 @@ function RelatorioModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="p-4 sm:p-6 space-y-8">
           {isLoading && (
             <div className="flex items-center justify-center h-48 text-slate-500 dark:text-[#9c9c9c] gap-2">
               <LoaderCircle size={20} className="animate-spin" />
@@ -1171,7 +1171,7 @@ function RelatorioModal({ isOpen, onClose }) {
                           : 0;
                       return (
                         <div key={p.plano} className="space-y-1">
-                          <div className="flex justify-between text-sm">
+                          <div className="flex flex-wrap justify-between gap-x-2 text-sm">
                             <span className="font-medium">{p.plano}</span>
                             <span className="text-slate-500 dark:text-[#aaa]">
                               {p.count} contrato{p.count !== 1 ? "s" : ""} ·{" "}
@@ -1226,9 +1226,9 @@ function DarBaixaModal({ contrato, onClose, onSubmit, isLoading }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-[#2f2f2f] bg-white dark:bg-[#121212] text-slate-900 dark:text-[#f3f3f3] shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
+    <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="w-full max-w-md max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 dark:border-[#2f2f2f] bg-white dark:bg-[#121212] text-slate-900 dark:text-[#f3f3f3] shadow-2xl">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-[#2d2d2d]">
           <h2 className="text-lg font-semibold">Dar Baixa - Mensalidade</h2>
           <button
             type="button"
@@ -1239,7 +1239,7 @@ function DarBaixaModal({ contrato, onClose, onSubmit, isLoading }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="p-6 space-y-4">
+        <form onSubmit={submit} className="p-4 sm:p-6 space-y-4">
           <p className="text-sm text-slate-500 dark:text-[#a5a5a5]">
             {contrato.nomeCliente} · {contrato.nomeSistema}
           </p>
@@ -1446,13 +1446,13 @@ export default function SelfMachinePage() {
           <p className="text-xs uppercase tracking-[0.22em] text-[#d0862b]">
             SelfMachine
           </p>
-          <h1 className="text-2xl font-semibold">Centro de Comando SaaS</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold">Centro de Comando SaaS</h1>
           <p className="text-sm text-slate-500 dark:text-[#a5a5a5] mt-1">
             Dashboard de clientes, contratos e cobrancas recorrentes.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setShowRelatorio(true)}
@@ -1536,13 +1536,13 @@ export default function SelfMachinePage() {
       )}
 
       {!isLoading && contratos.length === 0 && (
-        <div className="mt-8 rounded-2xl border border-dashed border-slate-300 dark:border-[#3b3b3b] bg-white dark:bg-[#111] p-8 text-center text-sm text-slate-500 dark:text-[#999]">
+        <div className="mt-8 rounded-2xl border border-dashed border-slate-300 dark:border-[#3b3b3b] bg-white dark:bg-[#111] p-6 sm:p-8 text-center text-sm text-slate-500 dark:text-[#999]">
           Nenhum SaaS cadastrado. Clique em "Novo SaaS" para comecar.
         </div>
       )}
 
       {!isLoading && contratos.length > 0 && contratosFiltrados.length === 0 && (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 dark:border-[#3b3b3b] bg-white dark:bg-[#111] p-8 text-center text-sm text-slate-500 dark:text-[#999]">
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 dark:border-[#3b3b3b] bg-white dark:bg-[#111] p-6 sm:p-8 text-center text-sm text-slate-500 dark:text-[#999]">
           Nenhum sistema encontrado para "{busca}".
         </div>
       )}
@@ -1583,10 +1583,10 @@ export default function SelfMachinePage() {
                   </span>
                 </div>
 
-                <h3 className="mt-4 text-lg font-semibold">
+                <h3 className="mt-4 text-lg font-semibold break-words">
                   {contrato.nomeSistema}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-[#a5a5a5]">
+                <p className="text-sm text-slate-500 dark:text-[#a5a5a5] break-words">
                   {contrato.nomeCliente}
                 </p>
 

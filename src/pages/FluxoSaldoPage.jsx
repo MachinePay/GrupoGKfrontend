@@ -33,7 +33,7 @@ function HorizontalBarChart({ data, height = 300 }) {
   return (
     <div
       style={{ height }}
-      className="flex flex-col justify-end gap-1 px-4 py-4"
+      className="flex flex-col justify-end gap-1 px-0 sm:px-4 py-4"
     >
       {data.slice(-12).map((item, idx) => (
         <div key={idx} className="flex items-center gap-2">
@@ -100,7 +100,7 @@ function SaldoTimeline({ data }) {
 
   return (
     <div className="space-y-6">
-      <div className="glass card-shadow rounded-2xl p-6">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-6">
         <h3 className="text-sm font-semibold text-white mb-4">
           Evolução Mensal do Saldo
         </h3>
@@ -108,7 +108,7 @@ function SaldoTimeline({ data }) {
       </div>
 
       <div className="glass card-shadow rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/5">
+        <div className="px-4 sm:px-6 py-4 border-b border-white/5">
           <h3 className="text-sm font-semibold text-white">
             Histórico Detalhado (Últimas 30 movimentações)
           </h3>
@@ -120,7 +120,7 @@ function SaldoTimeline({ data }) {
             .map((item, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between px-6 py-3 hover:bg-white/3 transition-colors"
+                className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 hover:bg-white/3 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">
@@ -130,7 +130,7 @@ function SaldoTimeline({ data }) {
                     {formatDate(item.data)}
                   </p>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                   <div
                     className={`text-right tabular-nums ${
                       item.tipo === "ENTRADA" || item.tipo === "TRANSFERENCIA"
@@ -145,7 +145,7 @@ function SaldoTimeline({ data }) {
                       {formatCurrency(item.valor)}
                     </p>
                   </div>
-                  <div className="text-right min-w-32">
+                  <div className="text-right min-w-24 sm:min-w-32">
                     <p className="text-sm font-semibold text-white">
                       {formatCurrency(item.balance)}
                     </p>
@@ -283,18 +283,16 @@ export default function FluxoSaldoPage() {
           type="date"
           value={dataInicio}
           onChange={(e) => setDataInicio(e.target.value)}
-          className="input-base"
-          style={{ width: 150 }}
+          className="input-base flex-1 min-w-0 sm:flex-none sm:w-[150px]"
         />
         <span className="text-slate-500 text-sm">até</span>
         <input
           type="date"
           value={dataFim}
           onChange={(e) => setDataFim(e.target.value)}
-          className="input-base"
-          style={{ width: 150 }}
+          className="input-base flex-1 min-w-0 sm:flex-none sm:w-[150px]"
         />
-        <div className="min-w-48">
+        <div className="w-full sm:w-auto sm:min-w-48">
           <Select
             value={empresaFiltro}
             onChange={(e) => setEmpresaFiltro(e.target.value)}
@@ -315,12 +313,12 @@ export default function FluxoSaldoPage() {
         <>
           {mensalData.length > 0 && (
             <div className="glass card-shadow rounded-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/5">
+              <div className="px-4 sm:px-6 py-4 border-b border-white/5">
                 <h3 className="text-sm font-semibold text-white">
                   Resumo Mensal
                 </h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 sm:p-6">
                 {mensalData.map((mes, idx) => (
                   <div
                     key={idx}

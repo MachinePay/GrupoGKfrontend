@@ -285,3 +285,25 @@ html[data-theme="dark"] {
     color: var(--text-secondary) !important;
   }
 }
+
+/* ===== Ajustes para celular ===== */
+@media (max-width: 639px) {
+  /* Evita o zoom automático do iPhone ao focar em campos */
+  .input-base,
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    min-height: 2.5rem;
+  }
+}
+
+/* Tabelas largas rolam na horizontal sem quebrar a página */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

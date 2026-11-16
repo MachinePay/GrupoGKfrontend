@@ -71,8 +71,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Título */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-white">
             {t("DASH_TITLE", "Dashboard Consolidado")}
           </h1>
@@ -82,14 +82,14 @@ export default function DashboardPage() {
         </div>
         <button
           onClick={handleRefresh}
-          className="btn-ghost flex items-center gap-1.5 text-xs"
+          className="btn-ghost flex items-center gap-1.5 text-xs shrink-0"
         >
           <RefreshCw size={13} /> {t("DASH_REFRESH", "Atualizar")}
         </button>
       </div>
 
       {/* Cards principais */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <SaldoCard
           title={t("DASH_TOTAL_ENTRADAS", "Total Entradas")}
           value={formatCurrency(consolidado?.totalEntradas)}
@@ -140,12 +140,12 @@ export default function DashboardPage() {
               <button
                 key={conta.id}
                 onClick={() => navigate(`/bancos?contaId=${conta.id}`)}
-                className="glass rounded-xl p-4 text-left hover:bg-white/5 transition-all duration-150 hover:border-blue-500/30 border border-transparent"
+                className="glass rounded-xl p-3 sm:p-4 text-left min-w-0 hover:bg-white/5 transition-all duration-150 hover:border-blue-500/30 border border-transparent"
               >
                 <p className="text-xs text-slate-400 mb-1 truncate">
                   {conta.banco} – {conta.nome}
                 </p>
-                <p className="text-base font-semibold text-white tabular-nums truncate">
+                <p className="text-sm sm:text-base font-semibold text-white tabular-nums truncate">
                   {formatCurrency(conta.saldoAtual)}
                 </p>
               </button>
@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
       {/* Lançamentos de Hoje */}
       <div className="glass card-shadow rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-white">
             {t("DASH_LANCAMENTOS_HOJE", "Lançamentos de Hoje")}
           </h2>
@@ -193,13 +193,13 @@ export default function DashboardPage() {
               {movsHoje.map((mov) => (
                 <div
                   key={mov.id}
-                  className="flex items-center justify-between px-5 py-3 hover:bg-white/3 transition-colors"
+                  className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-white/3 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">
                       {mov.referencia || mov.categoria || "Sem referência"}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 truncate">
                       {mov.empresa?.nome ?? "—"} •{" "}
                       {mov.tipo === "ENTRADA"
                         ? mov.contaDestino?.nome
@@ -229,8 +229,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Saldo final do dia */}
-            <div className="px-5 py-4 border-t border-white/5 bg-white/3">
-              <div className="flex items-center justify-between">
+            <div className="px-4 sm:px-5 py-4 border-t border-white/5 bg-white/3">
+              <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-slate-400">
                   {t("DASH_SALDO_HOJE", "Saldo do dia:")}:
                 </p>
@@ -251,8 +251,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Gráfico por empresa */}
-      <div className="glass card-shadow rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 mb-4">
           <h2 className="text-sm font-semibold text-white">
             {t("DASH_FAT_EMPRESA", "Faturamento por Empresa")}
           </h2>

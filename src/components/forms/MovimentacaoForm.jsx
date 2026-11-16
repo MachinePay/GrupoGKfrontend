@@ -328,7 +328,7 @@ export default function MovimentacaoForm({ onSuccess }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="glass card-shadow rounded-2xl p-6 space-y-5"
+      className="glass card-shadow rounded-2xl p-4 sm:p-6 space-y-5 min-w-0"
     >
       <div className="flex items-center gap-2 mb-1">
         <PlusCircle size={18} className="text-blue-400" />
@@ -538,7 +538,7 @@ export default function MovimentacaoForm({ onSuccess }) {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="btn-primary"
+          className="btn-primary w-full sm:w-auto"
           disabled={mutation.isPending}
         >
           {mutation.isPending ? "Salvando…" : "Salvar Lançamento"}

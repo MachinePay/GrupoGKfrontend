@@ -34,7 +34,7 @@ function EmpresaCard({ empresa }) {
   const saldo = data ? (data.totalEntradas || 0) - (data.totalSaidas || 0) : 0;
 
   return (
-    <div className="glass card-shadow rounded-2xl p-5 space-y-4">
+    <div className="glass card-shadow rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
       <div className="flex items-center gap-3">
         <div
           className="w-2 h-10 rounded-full"
@@ -55,15 +55,15 @@ function EmpresaCard({ empresa }) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 min-w-0">
               <p className="text-xs text-emerald-400 mb-0.5">Entradas</p>
-              <p className="text-base font-bold text-white tabular-nums">
+              <p className="text-sm sm:text-base font-bold text-white tabular-nums break-words">
                 {formatCurrency(data?.totalEntradas ?? 0)}
               </p>
             </div>
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3">
+            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 min-w-0">
               <p className="text-xs text-red-400 mb-0.5">Saídas</p>
-              <p className="text-base font-bold text-white tabular-nums">
+              <p className="text-sm sm:text-base font-bold text-white tabular-nums break-words">
                 {formatCurrency(data?.totalSaidas ?? 0)}
               </p>
             </div>
@@ -95,10 +95,10 @@ function EmpresaCard({ empresa }) {
               {data.projetos.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between text-sm"
+                  className="flex items-center justify-between gap-3 text-sm"
                 >
-                  <span className="text-slate-400">{p.nome}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-slate-400 min-w-0 truncate">{p.nome}</span>
+                  <span className="text-xs text-slate-500 shrink-0">
                     {p._count?.movimentacoes ?? 0} moviment.
                   </span>
                 </div>
@@ -119,8 +119,8 @@ export default function RelatoriosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-white">
             Relatórios por Empresa
           </h1>
@@ -128,11 +128,11 @@ export default function RelatoriosPage() {
             Visão detalhada de cada empresa do grupo
           </p>
         </div>
-        <BarChart2 size={20} className="text-slate-500" />
+        <BarChart2 size={20} className="text-slate-500 shrink-0" />
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={i}
@@ -141,7 +141,7 @@ export default function RelatoriosPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {empresas.map((emp) => (
             <EmpresaCard key={emp.id} empresa={emp} />
           ))}
@@ -156,7 +156,7 @@ export default function RelatoriosPage() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <section className="glass card-shadow rounded-2xl p-5 space-y-4">
+        <section className="glass card-shadow rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
           <div className="flex items-center gap-2">
             <Landmark size={18} className="text-blue-300" />
             <div>
@@ -189,10 +189,10 @@ export default function RelatoriosPage() {
                   className="rounded-xl border border-white/5 bg-white/3 p-4 space-y-2"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-white min-w-0 truncate">
                       {banco.banco}
                     </p>
-                    <p className="text-sm font-semibold text-blue-300">
+                    <p className="text-sm font-semibold text-blue-300 shrink-0">
                       {formatCurrency(banco.saldoTotal)}
                     </p>
                   </div>
@@ -201,9 +201,9 @@ export default function RelatoriosPage() {
                       key={`${banco.banco}-${item.empresa}`}
                       className="space-y-1"
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">{item.empresa}</span>
-                        <span className="text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-slate-400 min-w-0 truncate">{item.empresa}</span>
+                        <span className="text-slate-700 dark:text-slate-300 shrink-0">
                           {formatCurrency(item.saldo)} · {item.percentual}%
                         </span>
                       </div>
@@ -223,7 +223,7 @@ export default function RelatoriosPage() {
           )}
         </section>
 
-        <section className="glass card-shadow rounded-2xl p-5 space-y-4">
+        <section className="glass card-shadow rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
           <div className="flex items-center gap-2">
             <Trophy size={18} className="text-amber-300" />
             <div>
@@ -256,8 +256,8 @@ export default function RelatoriosPage() {
                   className="rounded-xl border border-white/5 bg-white/3 p-4"
                 >
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <div>
-                      <p className="text-sm font-medium text-white">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white break-words">
                         #{index + 1} {projeto.nome}
                       </p>
                       <p className="text-xs text-slate-500">
@@ -266,7 +266,7 @@ export default function RelatoriosPage() {
                       </p>
                     </div>
                     <p
-                      className={`text-sm font-semibold ${projeto.saldoLiquido >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`text-sm font-semibold shrink-0 ${projeto.saldoLiquido >= 0 ? "text-emerald-400" : "text-red-400"}`}
                     >
                       {formatCurrency(projeto.saldoLiquido)}
                     </p>

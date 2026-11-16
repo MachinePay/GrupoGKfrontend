@@ -217,12 +217,12 @@ function AgendaForm({ item, onCancel, onSuccess }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="glass card-shadow rounded-2xl p-6 space-y-4"
+      className="glass card-shadow rounded-2xl p-4 sm:p-6 space-y-4"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <PlusCircle size={18} className="text-blue-400" />
-          <div>
+      <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <PlusCircle size={18} className="text-blue-400 shrink-0" />
+          <div className="min-w-0">
             <h2 className="text-base font-semibold text-white">
               {item ? "Editar compromisso" : "Novo compromisso"}
             </h2>
@@ -235,7 +235,7 @@ function AgendaForm({ item, onCancel, onSuccess }) {
         <button
           type="button"
           onClick={onCancel}
-          className="btn-ghost inline-flex items-center gap-1.5 text-xs"
+          className="btn-ghost inline-flex items-center gap-1.5 text-xs shrink-0"
         >
           <X size={14} /> Fechar
         </button>
@@ -364,7 +364,7 @@ function AgendaForm({ item, onCancel, onSuccess }) {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="btn-primary"
+          className="btn-primary w-full sm:w-auto"
           disabled={mutation.isPending}
         >
           {mutation.isPending
@@ -413,8 +413,8 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
     (!isGiraKids || !!subcategoria);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="glass card-shadow rounded-2xl p-6 w-full max-w-md space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-6 w-full max-w-md space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex items-center gap-2">
           <CheckCheck size={18} className="text-emerald-400" />
           <h3 className="font-semibold text-white">Dar Baixa</h3>
@@ -548,7 +548,7 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading }) {
             </div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} className="btn-ghost flex-1">
             Cancelar
           </button>
@@ -578,8 +578,8 @@ function DeleteAgendaModal({ item, onConfirm, onCancel, isLoading }) {
   const isRealizado = item?.status === "REALIZADO";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="glass card-shadow rounded-2xl p-6 w-full max-w-md space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-6 w-full max-w-md space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex items-center gap-2">
           <Trash2 size={18} className="text-red-400" />
           <h3 className="font-semibold text-white">Excluir compromisso</h3>
@@ -596,7 +596,7 @@ function DeleteAgendaModal({ item, onConfirm, onCancel, isLoading }) {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button
             onClick={onCancel}
             className="btn-ghost flex-1"
@@ -666,28 +666,32 @@ function CalendarGrid({
 
   return (
     <div className="glass card-shadow rounded-2xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+      <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-3 sm:py-4 border-b border-white/5">
         <button
           onClick={onPrevMonth}
           className="btn-ghost inline-flex items-center gap-1 text-xs"
+          aria-label="Mês anterior"
         >
-          <ChevronLeft size={14} /> Anterior
+          <ChevronLeft size={14} />{" "}
+          <span className="hidden sm:inline">Anterior</span>
         </button>
-        <h3 className="text-sm font-semibold text-white">
+        <h3 className="text-sm font-semibold text-white text-center">
           {MONTH_NAMES[month]} {year}
         </h3>
         <button
           onClick={onNextMonth}
           className="btn-ghost inline-flex items-center gap-1 text-xs"
+          aria-label="Próximo mês"
         >
-          Próximo <ChevronRight size={14} />
+          <span className="hidden sm:inline">Próximo</span>{" "}
+          <ChevronRight size={14} />
         </button>
       </div>
       <div className="grid grid-cols-7 border-b border-white/5">
         {WEEKDAY_NAMES.map((d) => (
           <div
             key={d}
-            className="text-center text-xs text-slate-500 py-2 font-medium uppercase tracking-wide"
+            className="text-center text-[10px] sm:text-xs text-slate-500 py-2 font-medium uppercase sm:tracking-wide"
           >
             {d}
           </div>
@@ -699,7 +703,7 @@ function CalendarGrid({
             return (
               <div
                 key={`empty-${idx}`}
-                className="min-h-24 border-b border-r border-white/5 bg-transparent"
+                className="min-h-14 sm:min-h-24 border-b border-r border-white/5 bg-transparent"
               />
             );
           }
@@ -717,20 +721,20 @@ function CalendarGrid({
           return (
             <div
               key={day}
-              className={`min-h-24 border-b border-r border-white/5 p-1.5 flex flex-col gap-1 ${isToday ? "bg-blue-500/10" : ""}`}
+              className={`min-h-14 sm:min-h-24 min-w-0 border-b border-r border-white/5 p-0.5 sm:p-1.5 flex flex-col gap-0.5 sm:gap-1 ${isToday ? "bg-blue-500/10" : ""}`}
             >
               <span
-                className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? "bg-blue-500 text-white" : "text-slate-400"}`}
+                className={`text-[10px] sm:text-xs font-semibold w-5 h-5 shrink-0 flex items-center justify-center rounded-full ${isToday ? "bg-blue-500 text-white" : "text-slate-400"}`}
               >
                 {day}
               </span>
               {totalPagar > 0 && (
-                <div className="text-xs text-red-400 font-medium truncate">
+                <div className="hidden sm:block text-xs text-red-400 font-medium truncate">
                   -{formatCurrency(totalPagar)}
                 </div>
               )}
               {totalReceber > 0 && (
-                <div className="text-xs text-emerald-400 font-medium truncate">
+                <div className="hidden sm:block text-xs text-emerald-400 font-medium truncate">
                   +{formatCurrency(totalReceber)}
                 </div>
               )}
@@ -738,7 +742,7 @@ function CalendarGrid({
                 {dayItems.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
-                    className={`text-xs rounded px-1 py-0.5 cursor-pointer transition-opacity hover:opacity-80 ${
+                    className={`text-[9px] leading-tight sm:text-xs sm:leading-normal rounded px-0.5 sm:px-1 py-0.5 cursor-pointer transition-opacity hover:opacity-80 ${
                       item.status === "REALIZADO"
                         ? "text-slate-500 bg-white/5 line-through"
                         : item.tipo === "RECEBER"
@@ -749,14 +753,15 @@ function CalendarGrid({
                     onClick={() => item.status !== "REALIZADO" && onBaixa(item)}
                   >
                     <div className="truncate">{item.titulo}</div>
-                    <div className="truncate text-[10px] opacity-80">
+                    <div className="hidden sm:block truncate text-[10px] opacity-80">
                       {getCreatorName(item)}
                     </div>
                   </div>
                 ))}
                 {dayItems.length > 3 && (
-                  <div className="text-xs text-slate-500 pl-1">
-                    +{dayItems.length - 3} mais
+                  <div className="text-[9px] sm:text-xs text-slate-500 pl-0.5 sm:pl-1 truncate">
+                    +{dayItems.length - 3}
+                    <span className="hidden sm:inline"> mais</span>
                   </div>
                 )}
               </div>
@@ -960,8 +965,8 @@ export default function CalendarioPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-white">
               Calendário Financeiro
             </h1>
@@ -969,7 +974,7 @@ export default function CalendarioPage() {
               Contas a pagar e receber organizadas por data
             </p>
           </div>
-          <div className="flex items-center gap-1 rounded-xl glass p-1 shrink-0">
+          <div className="flex items-center gap-1 rounded-xl glass p-1 shrink-0 self-start">
             <button
               onClick={() => setViewMode("lista")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === "lista" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-900 dark:hover:text-white"}`}
@@ -1007,14 +1012,14 @@ export default function CalendarioPage() {
               setEditingItem(null);
               setShowForm(true);
             }}
-            className="btn-primary inline-flex items-center gap-2"
+            className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <PlusCircle size={16} /> Novo compromisso
           </button>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="glass rounded-2xl p-4 border border-red-500/20">
           <p className="text-xs text-red-400 uppercase tracking-wider mb-1">
             A Pagar (previsto)
@@ -1036,7 +1041,7 @@ export default function CalendarioPage() {
         <>
           <div className="flex flex-wrap gap-3 items-center">
             <Filter size={14} className="text-slate-400" />
-            <div className="min-w-48">
+            <div className="w-full sm:w-auto sm:min-w-48">
               <Select
                 value={empresaFiltro}
                 onChange={(e) => setEmpresaFiltro(e.target.value)}
@@ -1047,7 +1052,7 @@ export default function CalendarioPage() {
                 placeholder="Todas as empresas"
               />
             </div>
-            <div className="min-w-52">
+            <div className="w-full sm:w-auto sm:min-w-52">
               <Select
                 value={criadorFiltro}
                 onChange={(e) => setCriadorFiltro(e.target.value)}
@@ -1100,8 +1105,7 @@ export default function CalendarioPage() {
                 setDataInicio(e.target.value);
                 setHistoricoPage(1);
               }}
-              className="input-base"
-              style={{ width: 150 }}
+              className="input-base flex-1 min-w-0 sm:flex-none sm:w-[150px]"
             />
             <span className="text-slate-500 text-sm">até</span>
             <input
@@ -1111,10 +1115,9 @@ export default function CalendarioPage() {
                 setDataFim(e.target.value);
                 setHistoricoPage(1);
               }}
-              className="input-base"
-              style={{ width: 150 }}
+              className="input-base flex-1 min-w-0 sm:flex-none sm:w-[150px]"
             />
-            <div className="min-w-48">
+            <div className="w-full sm:w-auto sm:min-w-48">
               <Select
                 value={empresaFiltro}
                 onChange={(e) => {
@@ -1128,7 +1131,7 @@ export default function CalendarioPage() {
                 placeholder="Todas as empresas"
               />
             </div>
-            <div className="min-w-52">
+            <div className="w-full sm:w-auto sm:min-w-52">
               <Select
                 value={criadorFiltro}
                 onChange={(e) => {
@@ -1142,12 +1145,12 @@ export default function CalendarioPage() {
                 placeholder="Todos os criadores"
               />
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto max-w-full">
               {STATUS_FILTER.map((s) => (
                 <button
                   key={s.value}
                   onClick={() => setStatusFiltro(s.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     statusFiltro === s.value
                       ? "bg-blue-600 text-white"
                       : "glass text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1157,12 +1160,12 @@ export default function CalendarioPage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto max-w-full">
               {TIPO_FILTER.map((s) => (
                 <button
                   key={s.value}
                   onClick={() => setTipoFiltro(s.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     tipoFiltro === s.value
                       ? "bg-slate-100 text-slate-900"
                       : "glass text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1173,7 +1176,8 @@ export default function CalendarioPage() {
               ))}
             </div>
           </div>
-          <div className="glass card-shadow rounded-2xl overflow-hidden">
+          <div className="glass card-shadow rounded-2xl overflow-hidden table-scroll">
+            <div className="min-w-[760px]">
             <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/5 text-xs text-slate-500 uppercase tracking-wider">
               <div className="col-span-2">Data</div>
               <div className="col-span-3">Título</div>
@@ -1267,12 +1271,13 @@ export default function CalendarioPage() {
                 </div>
               </div>
             ))}
+            </div>
           </div>
         </>
       )}
 
-      <div className="glass card-shadow rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-3">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-3">
           <div className="flex items-center gap-2">
             <History size={16} className="text-emerald-300" />
             <h2 className="text-sm font-semibold text-white">
@@ -1297,7 +1302,7 @@ export default function CalendarioPage() {
             {historicoItems.map((item) => (
               <div
                 key={`hist-${item.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/3 px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/3 px-3 sm:px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="text-sm text-white truncate">{item.titulo}</p>
@@ -1308,9 +1313,9 @@ export default function CalendarioPage() {
                     Criado por: {getCreatorName(item)}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p
-                    className={`text-sm font-semibold ${item.tipo === "RECEBER" ? "text-emerald-400" : "text-red-400"}`}
+                    className={`text-sm font-semibold whitespace-nowrap ${item.tipo === "RECEBER" ? "text-emerald-400" : "text-red-400"}`}
                   >
                     {item.tipo === "RECEBER" ? "+" : "-"}{" "}
                     {formatCurrency(item.valor)}
@@ -1323,7 +1328,7 @@ export default function CalendarioPage() {
             ))}
 
             {historicoPagination && historicoPagination.totalPages > 1 && (
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
                 <p className="text-xs text-slate-500">
                   Página {historicoPagination.page} de{" "}
                   {historicoPagination.totalPages} · {historicoPagination.total}{" "}

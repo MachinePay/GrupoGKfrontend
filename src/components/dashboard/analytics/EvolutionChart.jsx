@@ -9,8 +9,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency } from "../../../lib/utils.js";
+import { useIsMobile } from "../../ui/useIsMobile.js";
 
 export default function EvolutionChart({ data, isLoading }) {
+  const isMobile = useIsMobile();
+
   if (isLoading) {
     return (
       <div className="h-96 flex items-center justify-center">
@@ -22,19 +25,24 @@ export default function EvolutionChart({ data, isLoading }) {
   const chartData = data || [];
 
   return (
-    <div className="glass rounded-lg p-4">
+    <div className="glass rounded-lg p-3 sm:p-4 min-w-0">
       <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-4">
         Evolução: Receitas vs Despesas
       </h3>
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData}>
+      <ResponsiveContainer width="100%" height={isMobile ? 260 : 350}>
+        <LineChart
+          data={chartData}
+          margin={
+            isMobile ? { top: 5, right: 8, left: -8, bottom: 0 } : undefined
+          }
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
           <XAxis
             dataKey="periodo"
             stroke="#94a3b8"
-            style={{ fontSize: "12px" }}
+            style={{ fontSize: isMobile ? "10px" : "12px" }}
           />
-          <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
+          <YAxis stroke="#94a3b8" style={{ fontSize: isMobile ? "10px" : "12px" }} />
           <Tooltip
             formatter={(value) => formatCurrency(value)}
             contentStyle={{
@@ -44,7 +52,7 @@ export default function EvolutionChart({ data, isLoading }) {
             }}
             labelStyle={{ color: "#94a3b8" }}
           />
-          <Legend wrapperStyle={{ paddingTop: "20px" }} />
+          <Legend wrapperStyle={{ paddingTop: isMobile ? "8px" : "20px" }} />
           <Line
             type="monotone"
             dataKey="entradas"

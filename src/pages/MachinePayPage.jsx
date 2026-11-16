@@ -223,12 +223,12 @@ function Modal({ title, subtitle, onClose, children, width = "max-w-lg" }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         className={cn(
-          "w-full rounded-2xl card-shadow max-h-[90vh] flex flex-col",
+          "w-full rounded-2xl card-shadow max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] flex flex-col",
           width,
         )}
         style={{
@@ -236,8 +236,8 @@ function Modal({ title, subtitle, onClose, children, width = "max-w-lg" }) {
           border: "1px solid var(--glass-border)",
         }}
       >
-        <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
-          <div>
+        <div className="flex items-start justify-between gap-4 px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+          <div className="min-w-0">
             <h3 className="text-base font-semibold text-white">{title}</h3>
             {subtitle && (
               <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
@@ -250,7 +250,7 @@ function Modal({ title, subtitle, onClose, children, width = "max-w-lg" }) {
             <X size={16} />
           </button>
         </div>
-        <div className="px-5 pb-5 overflow-y-auto">{children}</div>
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   );
@@ -344,7 +344,7 @@ function DiaVencimentoChip({ ativo, onClick, count, children }) {
 
 function SearchBox({ value, onChange, placeholder }) {
   return (
-    <div className="relative flex-1 min-w-[200px] max-w-sm">
+    <div className="relative flex-1 w-full sm:w-auto sm:min-w-[200px] sm:max-w-sm">
       <Search
         size={15}
         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
@@ -418,7 +418,7 @@ function useToast() {
   }
 
   const node = toast && (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl card-shadow bg-slate-900 text-[#fff] text-sm">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl card-shadow bg-slate-900 text-[#fff] text-sm max-w-[calc(100vw-1.5rem)]">
       {toast.error ? (
         <AlertTriangle size={16} className="text-red-400" />
       ) : (
@@ -444,7 +444,7 @@ function useToast() {
 
 function EmptyState({ icon: Icon, title, description, children }) {
   return (
-    <div className="glass rounded-2xl p-10 text-center">
+    <div className="glass rounded-2xl p-6 sm:p-10 text-center">
       <span className="inline-flex p-3 rounded-2xl bg-blue-500/10 text-blue-500">
         <Icon size={26} />
       </span>
@@ -691,9 +691,9 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
         </div>
 
         <div className="rounded-xl p-4 space-y-4" style={{ background: "var(--input-bg)" }}>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-sm font-semibold text-white">Máquinas e mensalidade</p>
-            <div className="flex items-center gap-1 rounded-lg glass p-0.5">
+            <div className="flex items-center gap-1 rounded-lg glass p-0.5 overflow-x-auto whitespace-nowrap max-w-full [&>*]:shrink-0">
               <Chip active={modo === "maquina"} onClick={() => setModo("maquina")}>
                 Por máquina
               </Chip>
@@ -752,7 +752,7 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-blue-500/10 border border-blue-500/20">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-4 py-3 bg-blue-500/10 border border-blue-500/20">
             <span className="text-xs text-slate-400">
               {totalMaquinas} máquina(s) cobradas
               {parceria > 0 && !parceriaCobrada && ` · ${parceria} parceria sem cobrança`}
@@ -810,7 +810,7 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
           <p className="text-sm text-red-500">{erroApi(mutation.error)}</p>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button type="button" onClick={onClose} className="btn-ghost">
             Cancelar
           </button>
@@ -877,7 +877,7 @@ function AjusteMaquinasModal({ cliente, competencia, cobrancaAtiva, onClose, onS
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Campo label="Tipo de máquina">
             <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="input-base">
               {Object.entries(TIPOS_MAQUINA).map(([key, t]) => (
@@ -944,7 +944,7 @@ function AjusteMaquinasModal({ cliente, competencia, cobrancaAtiva, onClose, onS
 
         {mutation.isError && <p className="text-sm text-red-500">{erroApi(mutation.error)}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button onClick={onClose} className="btn-ghost">Cancelar</button>
           <button
             onClick={() => mutation.mutate()}
@@ -1004,7 +1004,7 @@ function HistoricoModal({ clienteId, onClose }) {
             ))}
           </div>
 
-          <div className="flex gap-1 glass rounded-lg p-0.5 w-fit">
+          <div className="flex gap-1 glass rounded-lg p-0.5 w-fit max-w-full overflow-x-auto whitespace-nowrap [&>*]:shrink-0">
             <Chip active={aba === "cobrancas"} onClick={() => setAba("cobrancas")} count={data.cobrancas.length}>
               Cobranças
             </Chip>
@@ -1022,7 +1022,7 @@ function HistoricoModal({ clienteId, onClose }) {
             <div className="divide-y divide-[var(--border-color)]">
               {data.maquinas.map((m) => (
                 <div key={m.posId} className="flex items-center justify-between py-2.5 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm text-white">{m.nome || `Caixa ${m.posId}`}</p>
                     <p className="text-xs text-slate-500">
                       Caixa {m.posId} · última venda{" "}
@@ -1047,8 +1047,8 @@ function HistoricoModal({ clienteId, onClose }) {
             data.cobrancas.length ? (
               <div className="divide-y divide-[var(--border-color)]">
                 {data.cobrancas.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between py-2.5 gap-3">
-                    <div>
+                  <div key={c.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between py-2.5 gap-x-3 gap-y-1.5">
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-white">
                         {rotuloCompetencia(c.competencia)}
                       </p>
@@ -1080,7 +1080,7 @@ function HistoricoModal({ clienteId, onClose }) {
             <div className="divide-y divide-[var(--border-color)]">
               {data.ajustes.map((a) => (
                 <div key={a.id} className="flex items-center justify-between py-2.5 gap-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span
                       className={cn(
                         "p-1.5 rounded-lg",
@@ -1236,7 +1236,7 @@ function ImportarModal({ onClose, onImported }) {
             </div>
 
             <div className="max-h-72 overflow-auto rounded-xl border border-[var(--border-color)]">
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[520px] text-xs">
                 <thead className="sticky top-0" style={{ background: "var(--bg-secondary)" }}>
                   <tr className="text-left text-slate-500">
                     <th className="px-3 py-2 font-medium">Cliente</th>
@@ -1269,7 +1269,7 @@ function ImportarModal({ onClose, onImported }) {
 
         {mutation.isError && <p className="text-sm text-red-500">{erroApi(mutation.error)}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button onClick={onClose} className="btn-ghost">Cancelar</button>
           <button
             onClick={() => mutation.mutate()}
@@ -1333,7 +1333,7 @@ function ReceberModal({ cobrancas, contas, onClose, onDone }) {
             />
           </Campo>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Campo label="Data do pagamento">
             <input type="date" value={data} onChange={(e) => setData(e.target.value)} className="input-base" />
           </Campo>
@@ -1362,7 +1362,7 @@ function ReceberModal({ cobrancas, contas, onClose, onDone }) {
           </p>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button onClick={onClose} className="btn-ghost">Cancelar</button>
           <button
             onClick={() => mutation.mutate()}
@@ -1393,7 +1393,7 @@ function EditarCobrancaModal({ cobranca, onClose, onDone }) {
   return (
     <Modal title="Ajustar cobrança" subtitle={`${cobranca.cliente.nome} · ${rotuloCompetencia(cobranca.competencia)}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Campo label="Valor">
             <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} className="input-base" />
           </Campo>
@@ -1405,7 +1405,7 @@ function EditarCobrancaModal({ cobranca, onClose, onDone }) {
           <textarea rows={2} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} className="input-base resize-none" placeholder="Ex.: desconto combinado, pró-rata..." />
         </Campo>
         {mutation.isError && <p className="text-sm text-red-500">{erroApi(mutation.error)}</p>}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button onClick={onClose} className="btn-ghost">Cancelar</button>
           <button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="btn-primary">Salvar</button>
         </div>
@@ -1421,7 +1421,7 @@ function ConfirmModal({ title, message, confirmLabel = "Confirmar", danger, onCo
     <Modal title={title} onClose={onClose} width="max-w-md">
       <p className="text-sm text-slate-400">{message}</p>
       {erro && <p className="text-sm text-red-500 mt-3">{erro}</p>}
-      <div className="flex justify-end gap-2 mt-5">
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
         <button onClick={onClose} className="btn-ghost">Cancelar</button>
         <button
           disabled={loading}
@@ -1646,7 +1646,7 @@ function PixSumupModal({ cobranca, onClose, onPago, toast }) {
       {gerar.isError && (
         <div className="space-y-3">
           <p className="text-sm text-red-500">{erroApi(gerar.error)}</p>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <button onClick={onClose} className="btn-ghost">Fechar</button>
             <button onClick={() => gerar.mutate(false)} className="btn-primary">Tentar de novo</button>
           </div>
@@ -1669,7 +1669,7 @@ function PixSumupModal({ cobranca, onClose, onPago, toast }) {
           {pix.copiaCola && (
             <Campo label="Pix copia e cola">
               <div className="flex gap-2">
-                <input readOnly value={pix.copiaCola} className="input-base font-mono text-xs!" onFocus={(e) => e.target.select()} />
+                <input readOnly value={pix.copiaCola} className="input-base min-w-0 font-mono text-xs!" onFocus={(e) => e.target.select()} />
                 <button
                   type="button"
                   onClick={() => copiar(pix.copiaCola, "Pix copia e cola copiado")}
@@ -1859,7 +1859,7 @@ function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, filaAtu
 
         {mutation.isError && <p className="text-sm text-red-500">{erroApi(mutation.error)}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button onClick={onClose} className="btn-ghost">Cancelar</button>
           <button
             onClick={() => mutation.mutate()}
@@ -1885,11 +1885,11 @@ function FilaWhatsappBanner({ fila, onCancelar }) {
         fila.pausa ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/30 bg-emerald-500/5",
       )}
     >
-      <div className="flex items-center gap-3">
-        <span className={cn("p-2 rounded-xl", fila.pausa ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/15 text-emerald-600")}>
+      <div className="flex items-center gap-3 min-w-0">
+        <span className={cn("p-2 rounded-xl shrink-0", fila.pausa ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/15 text-emerald-600")}>
           {fila.pausa ? <AlertTriangle size={16} /> : <Loader2 size={16} className="animate-spin" />}
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-white">
             {fila.pausa ? "Envio pausado" : "Enviando cobranças no WhatsApp"}
             {" · "}
@@ -2131,9 +2131,9 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
       />
       {dados?.clientesSemCobranca > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 border border-blue-500/30 bg-blue-500/5">
-          <div className="flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-blue-500/15 text-blue-500"><Sparkles size={18} /></span>
-            <div>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="p-2 rounded-xl bg-blue-500/15 text-blue-500 shrink-0"><Sparkles size={18} /></span>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-white">
                 {dados.clientesSemCobranca} cliente(s) ativo(s) sem cobrança em {rotuloCompetencia(competencia)}
               </p>
@@ -2152,7 +2152,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
 
       {cobrancas.length > 0 && resumo && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <Kpi
               icon={CircleDollarSign}
               label="Previsto no mês"
@@ -2202,7 +2202,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
         <div className="glass rounded-2xl card-shadow">
           <div className="flex flex-wrap items-center gap-3 p-3 border-b border-[var(--border-color)]">
             <SearchBox value={busca} onChange={setBusca} placeholder="Buscar cliente ou telefone..." />
-            <div className="flex flex-wrap gap-1">
+            <div className="flex gap-1 max-w-full overflow-x-auto whitespace-nowrap [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
               <Chip active={filtro === "TODAS"} onClick={() => setFiltro("TODAS")} count={contagem.TODAS}>Todas</Chip>
               <Chip active={filtro === "ABERTAS"} onClick={() => setFiltro("ABERTAS")} count={contagem.ABERTAS}>Em aberto</Chip>
               <Chip active={filtro === "ATRASADO"} onClick={() => setFiltro("ATRASADO")} count={contagem.ATRASADO}>Atrasadas</Chip>
@@ -2260,12 +2260,12 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
           )}
 
           {selecionadas.size > 0 && (
-            <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20">
               <span className="text-sm text-emerald-700 dark:text-emerald-300">
                 {selecionadas.size} selecionada(s) ·{" "}
                 {formatCurrency(cobrancas.filter((c) => selecionadas.has(c.id)).reduce((a, c) => a + c.valor, 0))}
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button onClick={() => setSelecionadas(new Set())} className="btn-ghost py-1! text-xs!">Limpar</button>
                 {whatsappAtivo && (
                   <button
@@ -2285,8 +2285,8 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
             </div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto table-scroll">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500 border-b border-[var(--border-color)]">
                   <th className="pl-4 pr-1 py-2.5 w-8">
@@ -2797,7 +2797,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
       <div className="glass rounded-2xl card-shadow">
         <div className="flex flex-wrap items-center gap-3 p-3 border-b border-[var(--border-color)]">
           <SearchBox value={busca} onChange={setBusca} placeholder="Buscar por nome, telefone, documento..." />
-          <div className="flex flex-wrap gap-1">
+          <div className="flex gap-1 max-w-full overflow-x-auto whitespace-nowrap [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
             <Chip active={filtro === "ATIVO"} onClick={() => setFiltro("ATIVO")} count={contagem.ATIVO}>Ativos</Chip>
             {cobrancaAtiva && (
               <Chip active={filtro === "DEVENDO"} onClick={() => setFiltro("DEVENDO")} count={contagem.DEVENDO}>Devendo</Chip>
@@ -2812,7 +2812,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
             <Chip active={filtro === "INATIVO"} onClick={() => setFiltro("INATIVO")} count={contagem.INATIVO}>Inativos</Chip>
             <Chip active={filtro === "TODOS"} onClick={() => setFiltro("TODOS")} count={contagem.TODOS}>Todos</Chip>
           </div>
-          <div className="flex gap-2 ml-auto">
+          <div className="flex flex-wrap gap-2 ml-auto">
             <button onClick={onImportar} className="btn-ghost inline-flex items-center gap-1.5 py-1.5!">
               <Upload size={14} /> Importar
             </button>
@@ -2822,8 +2822,8 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto table-scroll">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-[var(--border-color)]">
                 <SortTh label="Cliente" campo="nome" sort={sort} setSort={setSort} className="pl-4" />
@@ -3087,15 +3087,15 @@ function InadimplenciaTab({ clientes, toast }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         <Kpi icon={AlertTriangle} tone="red" label="Total em atraso" value={formatCurrency(total)} detail={`${devedores.length} cliente(s)`} />
         {faixas.map((f) => (
           <Kpi key={f.label} icon={Clock} tone={f.tone} label={f.label} value={formatCurrency(f.valor)} detail={`${f.qtd} cliente(s)`} />
         ))}
       </div>
 
-      <div className="glass rounded-2xl card-shadow overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="glass rounded-2xl card-shadow overflow-x-auto table-scroll">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-[var(--border-color)]">
               <th className="pl-4 pr-3 py-2.5 font-medium">Cliente</th>
@@ -3305,9 +3305,9 @@ function SumupForm({ config, contas, toast }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="glass rounded-2xl p-5 card-shadow space-y-5">
+      <div className="glass rounded-2xl p-4 sm:p-5 card-shadow space-y-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-semibold text-white">Conta SumUp</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Gera um Pix exclusivo para cada cobrança. Quando o cliente paga, a cobrança recebe baixa sozinha.
@@ -3366,8 +3366,8 @@ function SumupForm({ config, contas, toast }) {
         {config.webhookUrl && (
           <div className="rounded-xl p-3 border border-[var(--border-color)] text-xs text-slate-400 space-y-1">
             <p className="font-medium text-slate-300">URL de aviso enviada à SumUp em cada Pix</p>
-            <div className="flex items-center gap-2">
-              <code className="truncate">{config.webhookUrl}</code>
+            <div className="flex items-center gap-2 min-w-0">
+              <code className="truncate min-w-0">{config.webhookUrl}</code>
               <button type="button" onClick={copiarWebhook} className="p-1 rounded text-slate-400 hover:text-blue-500 shrink-0" title="Copiar">
                 <Copy size={13} />
               </button>
@@ -3426,7 +3426,7 @@ function SumupForm({ config, contas, toast }) {
         )}
       </div>
 
-      <div className="glass rounded-2xl p-5 card-shadow space-y-3 text-sm text-slate-400 h-fit">
+      <div className="glass rounded-2xl p-4 sm:p-5 card-shadow space-y-3 text-sm text-slate-400 h-fit">
         <h3 className="text-sm font-semibold text-white">Como funciona</h3>
         <ol className="list-decimal pl-4 space-y-2 text-xs">
           <li>No painel da SumUp, crie uma chave de API em <b>Desenvolvedores › Chaves de API</b> e cole aqui.</li>
@@ -3528,9 +3528,9 @@ function WhatsappForm({ config, toast }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="glass rounded-2xl p-5 card-shadow space-y-5">
+      <div className="glass rounded-2xl p-4 sm:p-5 card-shadow space-y-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-semibold text-white">WhatsApp</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Envia as cobranças selecionadas sozinho, uma por vez, com a mensagem e o Pix de cada cliente.
@@ -3604,7 +3604,7 @@ function WhatsappForm({ config, toast }) {
         </div>
       </div>
 
-      <div className="glass rounded-2xl p-5 card-shadow space-y-3 text-sm text-slate-400 h-fit">
+      <div className="glass rounded-2xl p-4 sm:p-5 card-shadow space-y-3 text-sm text-slate-400 h-fit">
         <h3 className="text-sm font-semibold text-white">Como enviar</h3>
         <ol className="list-decimal pl-4 space-y-2 text-xs">
           <li>Salve a URL, a chave e a instância, e clique em <b>Conectar número</b> para ler o QR no celular.</li>
@@ -3692,7 +3692,7 @@ export default function MachinePayPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-white">Machine Pay</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {cobrancaAtiva
@@ -3755,13 +3755,13 @@ export default function MachinePayPage() {
       )}
 
       {!configQuery.isLoading && (
-        <div className="flex gap-1 border-b border-[var(--border-color)] overflow-x-auto">
+        <div className="flex gap-1 border-b border-[var(--border-color)] overflow-x-auto table-scroll">
           {abas.map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}
               onClick={() => setAba(key)}
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 rounded-t-lg",
+                "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all shrink-0 whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 rounded-t-lg",
                 aba === key
                   ? "border-blue-600 text-blue-600 dark:text-blue-300"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white",

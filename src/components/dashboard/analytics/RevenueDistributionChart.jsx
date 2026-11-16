@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { formatCurrency } from "../../../lib/utils.js";
+import { useIsMobile } from "../../ui/useIsMobile.js";
 
 const COLORS = [
   "#3b82f6",
@@ -11,9 +12,11 @@ const COLORS = [
 ];
 
 export default function RevenueDistributionChart({ data, isLoading }) {
+  const isMobile = useIsMobile();
+
   if (isLoading || !data || data.length === 0) {
     return (
-      <div className="glass rounded-lg p-4">
+      <div className="glass rounded-lg p-3 sm:p-4 min-w-0">
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-4">
           Distribuição de Receitas por Empresa
         </h3>
@@ -25,19 +28,23 @@ export default function RevenueDistributionChart({ data, isLoading }) {
   }
 
   return (
-    <div className="glass rounded-lg p-4">
+    <div className="glass rounded-lg p-3 sm:p-4 min-w-0">
       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
         Distribuição de Receitas por Empresa
       </h3>
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={isMobile ? 240 : 350}>
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={(entry) => `${entry.empresa}: ${entry.percentual}%`}
-            outerRadius={100}
+            label={
+              isMobile
+                ? false
+                : (entry) => `${entry.empresa}: ${entry.percentual}%`
+            }
+            outerRadius={isMobile ? 90 : 100}
             fill="#8884d8"
             dataKey="percentual"
           >
@@ -68,17 +75,20 @@ export default function RevenueDistributionChart({ data, isLoading }) {
       {/* Legenda com valores */}
       <div className="mt-4 space-y-2 text-xs">
         {data.map((item, index) => (
-          <div key={item.empresa} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div
+            key={item.empresa}
+            className="flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2 min-w-0">
               <div
-                className="w-3 h-3 rounded-full"
+                className="w-3 h-3 rounded-full shrink-0"
                 style={{
                   backgroundColor: COLORS[index % COLORS.length],
                 }}
               ></div>
-              <span className="text-slate-400">{item.empresa}</span>
+              <span className="text-slate-400 truncate">{item.empresa}</span>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <span className="text-slate-700 dark:text-slate-300">
                 {formatCurrency(item.valor)}
               </span>

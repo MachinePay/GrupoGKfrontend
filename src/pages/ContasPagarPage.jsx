@@ -97,8 +97,8 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading, errorMessage }) {
     (!isGiraKids || !!subcategoria);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="glass card-shadow rounded-2xl p-6 w-full max-w-md space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-6 w-full max-w-md space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex items-center gap-2">
           <CheckCircle size={18} className="text-emerald-400" />
           <h3 className="font-semibold text-white">Dar Baixa</h3>
@@ -241,7 +241,7 @@ function DarBaixaModal({ item, onConfirm, onCancel, isLoading, errorMessage }) {
           </p>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} className="btn-ghost flex-1">
             Cancelar
           </button>
@@ -277,27 +277,29 @@ function ContaDetailModal({ conta, onClose, onBaixa, onEdit, onDelete }) {
   const isUrgent = daysUntilDue >= 0 && daysUntilDue <= 3;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="glass card-shadow rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4">
+      <div className="glass card-shadow rounded-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] overflow-y-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-xl font-bold text-white">{conta.titulo}</h2>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <h2 className="text-lg sm:text-xl font-bold text-white break-words min-w-0">
+                {conta.titulo}
+              </h2>
               <Badge status={conta.status} />
             </div>
             <p className="text-sm text-slate-400">{conta.empresa?.nome}</p>
           </div>
-          <button onClick={onClose} className="btn-ghost text-xs">
+          <button onClick={onClose} className="btn-ghost text-xs shrink-0">
             ✕
           </button>
         </div>
 
         {/* Main Info */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div className="rounded-xl bg-white/3 border border-white/5 p-4">
             <p className="text-xs text-slate-500 mb-1">Valor</p>
-            <p className="text-2xl font-bold text-red-400">
+            <p className="text-xl sm:text-2xl font-bold text-red-400 break-words">
               {formatCurrency(conta.valor)}
             </p>
           </div>
@@ -329,13 +331,13 @@ function ContaDetailModal({ conta, onClose, onBaixa, onEdit, onDelete }) {
           {conta.descricao && (
             <div>
               <p className="text-xs text-slate-500 mb-1">Descrição</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{conta.descricao}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300 break-words">{conta.descricao}</p>
             </div>
           )}
           {conta.origem && (
             <div>
               <p className="text-xs text-slate-500 mb-1">Origem</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">{conta.origem}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300 break-words">{conta.origem}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
@@ -411,7 +413,7 @@ function ContaRow({ conta, onViewDetails, isExpanded, onToggle }) {
   return (
     <>
       <div
-        className="grid grid-cols-12 gap-2 px-5 py-3.5 border-b border-white/5 hover:bg-white/2 transition-colors items-center cursor-pointer"
+        className="grid grid-cols-12 gap-2 px-5 py-3.5 border-b border-white/5 hover:bg-white/2 transition-colors items-center cursor-pointer min-w-[640px]"
         onClick={onToggle}
       >
         <div className="col-span-1">
@@ -454,12 +456,12 @@ function ContaRow({ conta, onViewDetails, isExpanded, onToggle }) {
       </div>
 
       {isExpanded && (
-        <div className="px-5 py-4 border-b border-white/5 bg-white/2">
+        <div className="px-4 sm:px-5 py-4 border-b border-white/5 bg-white/2">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {conta.descricao && (
-              <div className="col-span-2">
+              <div className="col-span-2 min-w-0 break-words">
                 <p className="text-xs text-slate-500 mb-1">Descrição</p>
-                <p className="text-sm text-slate-700 dark:text-slate-300">{conta.descricao}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 break-words">{conta.descricao}</p>
               </div>
             )}
             <div>
@@ -625,12 +627,12 @@ export default function ContasPagarPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="glass card-shadow rounded-2xl p-4 border border-red-500/20">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="glass card-shadow rounded-2xl p-4 border border-red-500/20 col-span-2 sm:col-span-1">
           <p className="text-xs text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1">
             <AlertCircle size={12} /> Total a Pagar
           </p>
-          <p className="text-xl font-bold text-red-400">
+          <p className="text-xl font-bold text-red-400 break-words">
             {formatCurrency(stats.total)}
           </p>
         </div>
@@ -684,18 +686,16 @@ export default function ContasPagarPage() {
           type="date"
           value={dataInicio}
           onChange={(e) => setDataInicio(e.target.value)}
-          className="input-base"
-          style={{ width: 140 }}
+          className="input-base flex-1 min-w-0 sm:flex-none sm:w-[140px]"
         />
         <span className="text-slate-500 text-sm">até</span>
         <input
           type="date"
           value={dataFim}
           onChange={(e) => setDataFim(e.target.value)}
-          className="input-base"
-          style={{ width: 140 }}
+          className="input-base flex-1 min-w-0 sm:flex-none sm:w-[140px]"
         />
-        <div className="min-w-40">
+        <div className="w-full sm:w-auto sm:min-w-40">
           <Select
             value={empresaFiltro}
             onChange={(e) => setEmpresaFiltro(e.target.value)}
@@ -706,7 +706,7 @@ export default function ContasPagarPage() {
             placeholder="Todas as empresas"
           />
         </div>
-        <div className="min-w-40">
+        <div className="w-full sm:w-auto sm:min-w-40">
           <Select
             value={prioridadeFiltro}
             onChange={(e) => setPrioridadeFiltro(e.target.value)}
@@ -735,13 +735,13 @@ export default function ContasPagarPage() {
           {/* Atrasadas */}
           {categorizedContas.atrasadas.length > 0 && (
             <div className="glass card-shadow rounded-2xl overflow-hidden border-l-4 border-l-red-500">
-              <div className="px-5 py-3 border-b border-white/5 bg-red-500/10">
+              <div className="px-4 sm:px-5 py-3 border-b border-white/5 bg-red-500/10">
                 <h2 className="text-sm font-semibold text-red-400 flex items-center gap-2">
                   <AlertCircle size={16} />
                   Atrasadas ({categorizedContas.atrasadas.length})
                 </h2>
               </div>
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-white/5 table-scroll">
                 {categorizedContas.atrasadas.map((conta) => (
                   <ContaRow
                     key={conta.id}
@@ -760,13 +760,13 @@ export default function ContasPagarPage() {
           {/* Urgentes */}
           {categorizedContas.urgentes.length > 0 && (
             <div className="glass card-shadow rounded-2xl overflow-hidden border-l-4 border-l-yellow-500">
-              <div className="px-5 py-3 border-b border-white/5 bg-yellow-500/10">
+              <div className="px-4 sm:px-5 py-3 border-b border-white/5 bg-yellow-500/10">
                 <h2 className="text-sm font-semibold text-yellow-400 flex items-center gap-2">
                   <Clock size={16} />
                   Vencimento Próximo ({categorizedContas.urgentes.length})
                 </h2>
               </div>
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-white/5 table-scroll">
                 {categorizedContas.urgentes.map((conta) => (
                   <ContaRow
                     key={conta.id}
@@ -785,13 +785,13 @@ export default function ContasPagarPage() {
           {/* Próximos */}
           {categorizedContas.proximos.length > 0 && (
             <div className="glass card-shadow rounded-2xl overflow-hidden border-l-4 border-l-blue-500">
-              <div className="px-5 py-3 border-b border-white/5 bg-blue-500/10">
+              <div className="px-4 sm:px-5 py-3 border-b border-white/5 bg-blue-500/10">
                 <h2 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
                   <Calendar size={16} />
                   Próximos Vencimentos ({categorizedContas.proximos.length})
                 </h2>
               </div>
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-white/5 table-scroll">
                 {categorizedContas.proximos.map((conta) => (
                   <ContaRow
                     key={conta.id}
@@ -810,13 +810,13 @@ export default function ContasPagarPage() {
           {/* Realizadas */}
           {categorizedContas.realizadas.length > 0 && (
             <div className="glass card-shadow rounded-2xl overflow-hidden border-l-4 border-l-emerald-500">
-              <div className="px-5 py-3 border-b border-white/5 bg-emerald-500/10">
+              <div className="px-4 sm:px-5 py-3 border-b border-white/5 bg-emerald-500/10">
                 <h2 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
                   <CheckCircle size={16} />
                   Realizadas ({categorizedContas.realizadas.length})
                 </h2>
               </div>
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-white/5 table-scroll">
                 {categorizedContas.realizadas.map((conta) => (
                   <ContaRow
                     key={conta.id}

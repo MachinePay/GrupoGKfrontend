@@ -9,11 +9,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency } from "../../../lib/utils.js";
+import { useIsMobile } from "../../ui/useIsMobile.js";
 
 export default function ProjectRankingChart({ data, isLoading }) {
+  const isMobile = useIsMobile();
+
   if (isLoading || !data || data.length === 0) {
     return (
-      <div className="glass rounded-lg p-4">
+      <div className="glass rounded-lg p-3 sm:p-4 min-w-0">
         <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-4">
           Ranking de Projetos (MaisQuiosque)
         </h3>
@@ -25,24 +28,31 @@ export default function ProjectRankingChart({ data, isLoading }) {
   }
 
   return (
-    <div className="glass rounded-lg p-4">
+    <div className="glass rounded-lg p-3 sm:p-4 min-w-0">
       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
         Ranking de Projetos (Lucro Líquido)
       </h3>
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={isMobile ? 300 : 350}>
         <BarChart
           data={data}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          margin={
+            isMobile
+              ? { top: 10, right: 8, left: -8, bottom: 30 }
+              : { top: 20, right: 30, left: 20, bottom: 60 }
+          }
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
           <XAxis
             dataKey="projeto"
             angle={-45}
             textAnchor="end"
-            height={100}
-            tick={{ fontSize: 12, fill: "#94a3b8" }}
+            height={isMobile ? 80 : 100}
+            tick={{ fontSize: isMobile ? 10 : 12, fill: "#94a3b8" }}
           />
-          <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
+          <YAxis
+            stroke="#94a3b8"
+            style={{ fontSize: isMobile ? "10px" : "12px" }}
+          />
           <Tooltip
             formatter={(value) => formatCurrency(value)}
             contentStyle={{
@@ -52,7 +62,7 @@ export default function ProjectRankingChart({ data, isLoading }) {
             }}
             labelStyle={{ color: "#94a3b8" }}
           />
-          <Legend wrapperStyle={{ paddingTop: "20px" }} />
+          <Legend wrapperStyle={{ paddingTop: isMobile ? "8px" : "20px" }} />
           <Bar
             dataKey="lucroLiquido"
             fill="#3b82f6"
