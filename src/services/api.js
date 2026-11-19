@@ -178,54 +178,62 @@ export const selfMachineApi = {
   relatorio: () => api.get("/selfmachine/saas/relatorio"),
 };
 
-// ─── Machine Pay ────────────────────────────────────────────────────────────
-export const machinePayApi = {
-  config: () => api.get("/machinepay/config"),
-  salvarConfig: (payload) => api.put("/machinepay/config", payload),
-  statusPainel: () => api.get("/machinepay/painel/status"),
-  sincronizarPainel: () => api.post("/machinepay/painel/sincronizar"),
-  listarClientes: () => api.get("/machinepay/clientes"),
-  criarCliente: (payload) => api.post("/machinepay/clientes", payload),
-  atualizarCliente: (id, payload) =>
-    api.put(`/machinepay/clientes/${id}`, payload),
-  ajustarMaquinas: (id, payload) =>
-    api.post(`/machinepay/clientes/${id}/maquinas`, payload),
-  removerCliente: (id) => api.delete(`/machinepay/clientes/${id}`),
-  historicoCliente: (id) => api.get(`/machinepay/clientes/${id}/historico`),
-  importarClientes: (clientes) =>
-    api.post("/machinepay/clientes/importar", { clientes }),
-  competencia: (competencia) =>
-    api.get("/machinepay/cobrancas", { params: { competencia } }),
-  evolucao: (meses = 6) =>
-    api.get("/machinepay/cobrancas/evolucao", { params: { meses } }),
-  gerarCobrancas: (competencia) =>
-    api.post("/machinepay/cobrancas/gerar", { competencia }),
-  atualizarCobranca: (id, payload) =>
-    api.put(`/machinepay/cobrancas/${id}`, payload),
-  pagarCobranca: (id, payload) =>
-    api.post(`/machinepay/cobrancas/${id}/pagar`, payload),
-  estornarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/estornar`),
-  cancelarCobranca: (id) => api.post(`/machinepay/cobrancas/${id}/cancelar`),
-  removerCobranca: (id) => api.delete(`/machinepay/cobrancas/${id}`),
-  previaApagarCobrancas: () => api.get("/machinepay/cobrancas/apagar/previa"),
-  apagarCobrancas: (payload) => api.post("/machinepay/cobrancas/apagar", payload),
-  gerarPix: (id, novo = false) =>
-    api.post(`/machinepay/cobrancas/${id}/pix`, { novo }),
-  verificarPix: (id) => api.post(`/machinepay/cobrancas/${id}/pix/verificar`),
-  sumupConfig: () => api.get("/machinepay/sumup/config"),
-  salvarSumupConfig: (payload) => api.put("/machinepay/sumup/config", payload),
-  testarSumup: () => api.post("/machinepay/sumup/testar"),
-  conferirPixPagos: () => api.post("/machinepay/sumup/conferir"),
-  whatsappConfig: () => api.get("/machinepay/whatsapp/config"),
-  salvarWhatsappConfig: (payload) =>
-    api.put("/machinepay/whatsapp/config", payload),
-  whatsappConexao: () => api.get("/machinepay/whatsapp/conexao"),
-  conectarWhatsapp: () => api.post("/machinepay/whatsapp/conectar"),
-  filaWhatsapp: () => api.get("/machinepay/whatsapp/fila"),
-  enviarWhatsapp: (ids, reenviar = false) =>
-    api.post("/machinepay/whatsapp/enviar", { ids, reenviar }),
-  cancelarWhatsapp: () => api.post("/machinepay/whatsapp/cancelar"),
-};
+// ─── Machine Pay e CompactPay ───────────────────────────────────────────────
+// Mesmas rotas para os dois produtos, mudando so o prefixo. SumUp e WhatsApp
+// sao compartilhados (a configuracao e a mesma pelos dois prefixos).
+function criarProdutoApi(prefixo) {
+  return {
+    config: () => api.get(`${prefixo}/config`),
+    salvarConfig: (payload) => api.put(`${prefixo}/config`, payload),
+    statusPainel: () => api.get(`${prefixo}/painel/status`),
+    sincronizarPainel: () => api.post(`${prefixo}/painel/sincronizar`),
+    listarClientes: () => api.get(`${prefixo}/clientes`),
+    criarCliente: (payload) => api.post(`${prefixo}/clientes`, payload),
+    atualizarCliente: (id, payload) =>
+      api.put(`${prefixo}/clientes/${id}`, payload),
+    ajustarMaquinas: (id, payload) =>
+      api.post(`${prefixo}/clientes/${id}/maquinas`, payload),
+    removerCliente: (id) => api.delete(`${prefixo}/clientes/${id}`),
+    historicoCliente: (id) => api.get(`${prefixo}/clientes/${id}/historico`),
+    importarClientes: (clientes) =>
+      api.post(`${prefixo}/clientes/importar`, { clientes }),
+    competencia: (competencia) =>
+      api.get(`${prefixo}/cobrancas`, { params: { competencia } }),
+    evolucao: (meses = 6) =>
+      api.get(`${prefixo}/cobrancas/evolucao`, { params: { meses } }),
+    gerarCobrancas: (competencia) =>
+      api.post(`${prefixo}/cobrancas/gerar`, { competencia }),
+    atualizarCobranca: (id, payload) =>
+      api.put(`${prefixo}/cobrancas/${id}`, payload),
+    pagarCobranca: (id, payload) =>
+      api.post(`${prefixo}/cobrancas/${id}/pagar`, payload),
+    estornarCobranca: (id) => api.post(`${prefixo}/cobrancas/${id}/estornar`),
+    cancelarCobranca: (id) => api.post(`${prefixo}/cobrancas/${id}/cancelar`),
+    removerCobranca: (id) => api.delete(`${prefixo}/cobrancas/${id}`),
+    previaApagarCobrancas: () => api.get(`${prefixo}/cobrancas/apagar/previa`),
+    apagarCobrancas: (payload) => api.post(`${prefixo}/cobrancas/apagar`, payload),
+    gerarPix: (id, novo = false) =>
+      api.post(`${prefixo}/cobrancas/${id}/pix`, { novo }),
+    verificarPix: (id) => api.post(`${prefixo}/cobrancas/${id}/pix/verificar`),
+    sumupConfig: () => api.get(`${prefixo}/sumup/config`),
+    salvarSumupConfig: (payload) => api.put(`${prefixo}/sumup/config`, payload),
+    testarSumup: () => api.post(`${prefixo}/sumup/testar`),
+    conferirPixPagos: () => api.post(`${prefixo}/sumup/conferir`),
+    whatsappConfig: () => api.get(`${prefixo}/whatsapp/config`),
+    salvarWhatsappConfig: (payload) =>
+      api.put(`${prefixo}/whatsapp/config`, payload),
+    whatsappConexao: () => api.get(`${prefixo}/whatsapp/conexao`),
+    conectarWhatsapp: () => api.post(`${prefixo}/whatsapp/conectar`),
+    filaWhatsapp: () => api.get(`${prefixo}/whatsapp/fila`),
+    enviarWhatsapp: (ids, reenviar = false) =>
+      api.post(`${prefixo}/whatsapp/enviar`, { ids, reenviar }),
+    cancelarWhatsapp: () => api.post(`${prefixo}/whatsapp/cancelar`),
+    testarIntegracao: () => api.post(`${prefixo}/config/testar-integracao`),
+  };
+}
+
+export const machinePayApi = criarProdutoApi("/machinepay");
+export const compactPayApi = criarProdutoApi("/compactpay");
 
 // Contas SumUp do grupo e as maquininhas pareadas na Cloud API de cada uma.
 export const sumupContasApi = {

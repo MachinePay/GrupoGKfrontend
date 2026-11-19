@@ -21,14 +21,21 @@ import {
   Wallet,
   AlertTriangle,
   Smartphone,
+  KeyRound,
+  MessageSquareText,
 } from "lucide-react";
 import api, {
   cadastrosApi,
   cotacoesApi,
   fornecedoresApi,
-  machinePayApi,
   sumupContasApi,
 } from "../services/api.js";
+import {
+  AbasProduto,
+  IntegracoesCobrancaTab,
+  MensagensCobrancaTab,
+  PRODUTOS_COBRANCA,
+} from "../components/machinepay/ConfiguracoesCobranca.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useEmpresas } from "../hooks/useFinanceiro.js";
@@ -1249,6 +1256,16 @@ function rotuloMes(competencia) {
 }
 
 function MachinePayConfigTab() {
+  const [produto, setProduto] = useState("MACHINEPAY");
+  return (
+    <div className="space-y-4">
+      <AbasProduto valor={produto} onChange={setProduto} />
+      <ApagarCobrancas key={produto} info={PRODUTOS_COBRANCA.find((p) => p.produto === produto)} />
+    </div>
+  );
+}
+
+function ApagarCobrancas({ info }) {
   const qc = useQueryClient();
   const [competencia, setCompetencia] = useState("");
   const [incluirPagas, setIncluirPagas] = useState(false);
@@ -1256,8 +1273,8 @@ function MachinePayConfigTab() {
   const [resultado, setResultado] = useState(null);
 
   const { data: meses = [], isLoading } = useQuery({
-    queryKey: ["machinepay", "apagar", "previa"],
-    queryFn: () => machinePayApi.previaApagarCobrancas().then((r) => r.data),
+    queryKey: [info.chave, "apagar", "previa"],
+    queryFn: () => info.api.previaApagarCobrancas().then((r) => r.data),
   });
 
   // Soma do que sera apagado com a escolha atual.
@@ -1272,11 +1289,11 @@ function MachinePayConfigTab() {
 
   const apagar = useMutation({
     mutationFn: () =>
-      machinePayApi.apagarCobrancas({ competencia, incluirPagas, confirmacao }).then((r) => r.data),
+      info.api.apagarCobrancas({ competencia, incluirPagas, confirmacao }).then((r) => r.data),
     onSuccess: (r) => {
       setResultado(r);
       setConfirmacao("");
-      qc.invalidateQueries({ queryKey: ["machinepay"] });
+      qc.invalidateQueries({ queryKey: [info.chave] });
       qc.invalidateQueries({ queryKey: ["movimentacoes"] });
       qc.invalidateQueries({ queryKey: ["contas"] });
     },
@@ -1287,9 +1304,9 @@ function MachinePayConfigTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Apagar cobranças do Machine Pay</h3>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Apagar cobranças do {info.nome}</h3>
         <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-          Remove as cobranças geradas de um mês (ou de todos). Os clientes e as máquinas não são apagados, e as cobranças podem ser geradas de novo em Machine Pay › Gerar cobranças.
+          Remove as cobranças geradas de um mês (ou de todos). Os clientes e as máquinas não são apagados, e as cobranças podem ser geradas de novo em {info.nome} › Gerar cobranças.
         </p>
       </div>
 
@@ -1813,7 +1830,9 @@ const TABS = [
 const ADMIN_TABS = [
   ...TABS,
   { key: "usuarios", label: "Usuários", icon: Users, component: UsuariosTab },
-  { key: "machinepay", label: "Machine Pay", icon: Wallet, component: MachinePayConfigTab },
+  { key: "integracoes", label: "Integrações", icon: KeyRound, component: IntegracoesCobrancaTab },
+  { key: "mensagens", label: "Mensagens", icon: MessageSquareText, component: MensagensCobrancaTab },
+  { key: "machinepay", label: "Apagar cobranças", icon: Wallet, component: MachinePayConfigTab },
   { key: "sumup", label: "SumUp", icon: Smartphone, component: SumupTab },
 ];
 
@@ -1834,6 +1853,10 @@ export default function ConfiguracoesPage() {
         return <FornecedoresTab />;
       case "usuarios":
         return isAdmin ? <UsuariosTab /> : null;
+      case "integracoes":
+        return isAdmin ? <IntegracoesCobrancaTab /> : null;
+      case "mensagens":
+        return isAdmin ? <MensagensCobrancaTab /> : null;
       case "machinepay":
         return isAdmin ? <MachinePayConfigTab /> : null;
       case "sumup":

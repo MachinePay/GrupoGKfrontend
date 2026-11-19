@@ -56,7 +56,8 @@ function AppRoutes() {
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="bancos" element={<BancosPage />} />
           <Route path="selfmachine" element={<SelfMachinePage />} />
-          <Route path="machinepay" element={<MachinePayPage />} />
+          <Route path="machinepay" element={<MachinePayPage key="machinepay" produto="MACHINEPAY" />} />
+          <Route path="compactpay" element={<MachinePayPage key="compactpay" produto="COMPACTPAY" />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
         </Route>
 

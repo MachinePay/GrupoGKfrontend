@@ -15,6 +15,7 @@ import {
   CreditCard,
   ChevronDown,
   X,
+  Cpu,
 } from "lucide-react";
 import logoGrupoGk from "../../assets/Logo Grupo Gk .png";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -35,6 +36,12 @@ const NAV_KEYS = [
     chave: "NAV_MACHINEPAY",
     label: "Machine Pay",
     Icon: CreditCard,
+  },
+  {
+    to: "/compactpay",
+    chave: "NAV_COMPACTPAY",
+    label: "CompactPay",
+    Icon: Cpu,
   },
   { to: "/configuracoes", chave: "NAV_CONFIGURACOES", Icon: Settings },
 ];

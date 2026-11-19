@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -21,7 +21,6 @@ import {
   Minus,
   MoreVertical,
   Pencil,
-  KeyRound,
   Plus,
   Power,
   PowerOff,
@@ -46,7 +45,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { cadastrosApi, machinePayApi } from "../services/api.js";
+import { cadastrosApi, compactPayApi, machinePayApi as machinePayApiBase } from "../services/api.js";
+import {
+  montarMensagemCliente,
+  montarMensagemCobranca,
+  mesesSomados,
+  nomeCompetencia,
+} from "../lib/machinePayMensagens.js";
+import { useToast } from "../components/machinepay/useToast.jsx";
 import { cn, formatCurrency, formatDate } from "../lib/utils.js";
 import {
   exportarCobrancasExcel,
@@ -54,6 +60,18 @@ import {
 } from "../lib/machinePayImport.js";
 
 // ─── Constantes e helpers ───────────────────────────────────────────────────
+
+// Machine Pay e CompactPay usam esta mesma tela; o produto decide as rotas,
+// o cache e a configuracao (marca, chave Pix e modelos das mensagens).
+const PRODUTOS = {
+  MACHINEPAY: { produto: "MACHINEPAY", chave: "machinepay", nome: "Machine Pay", origem: "painel Machine Pay", api: machinePayApiBase },
+  COMPACTPAY: { produto: "COMPACTPAY", chave: "compactpay", nome: "CompactPay", origem: "CompactPay", api: compactPayApi },
+};
+const ProdutoContext = createContext({ ...PRODUTOS.MACHINEPAY, config: {} });
+
+function useProduto() {
+  return useContext(ProdutoContext);
+}
 
 const MESES = [
   "Janeiro",
@@ -147,6 +165,15 @@ function linkWhatsApp(telefone, mensagem) {
   return `https://wa.me/${d}?text=${encodeURIComponent(mensagem)}`;
 }
 
+// Faixas: maquinas com valor diferente do padrao ([{ valor, quantidade, descricao }]).
+function faixasValidas(c) {
+  return (Array.isArray(c?.faixas) ? c.faixas : []).filter((f) => Number(f.quantidade) > 0);
+}
+
+function maquinasFaixas(c) {
+  return faixasValidas(c).reduce((a, f) => a + (Number(f.quantidade) || 0), 0);
+}
+
 function calcularMensal(c) {
   if (c.semMensalidade) return 0;
   if (c.valorFixo !== null && c.valorFixo !== undefined && c.valorFixo !== "") {
@@ -155,7 +182,8 @@ function calcularMensal(c) {
   return (
     (Number(c.maquinasProprias) || 0) * (Number(c.valorMensalidade) || 0) +
     (Number(c.maquinasPlano36) || 0) * (Number(c.valorMensalidade36) || 0) +
-    (Number(c.maquinasParceria) || 0) * (Number(c.valorMensalidadeParceria) || 0)
+    (Number(c.maquinasParceria) || 0) * (Number(c.valorMensalidadeParceria) || 0) +
+    faixasValidas(c).reduce((a, f) => a + (Number(f.valor) || 0) * (Number(f.quantidade) || 0), 0)
   );
 }
 
@@ -407,40 +435,6 @@ function Menu({ items }) {
   );
 }
 
-function useToast() {
-  const [toast, setToast] = useState(null);
-  const timer = useRef(null);
-
-  function show(message, opts = {}) {
-    clearTimeout(timer.current);
-    setToast({ message, ...opts });
-    timer.current = setTimeout(() => setToast(null), opts.undo ? 6000 : 3500);
-  }
-
-  const node = toast && (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl card-shadow bg-slate-900 text-[#fff] text-sm max-w-[calc(100vw-1.5rem)]">
-      {toast.error ? (
-        <AlertTriangle size={16} className="text-red-400" />
-      ) : (
-        <CheckCircle2 size={16} className="text-emerald-400" />
-      )}
-      <span className="text-[#fff]">{toast.message}</span>
-      {toast.undo && (
-        <button
-          onClick={() => {
-            toast.undo();
-            setToast(null);
-          }}
-          className="ml-2 text-xs font-semibold text-[#93c5fd] hover:underline"
-        >
-          Desfazer
-        </button>
-      )}
-    </div>
-  );
-
-  return { show, node };
-}
 
 function EmptyState({ icon: Icon, title, description, children }) {
   return (
@@ -462,6 +456,7 @@ function EmptyState({ icon: Icon, title, description, children }) {
 // ─── Modais de cliente ──────────────────────────────────────────────────────
 
 const CLIENTE_VAZIO = {
+  faixas: [],
   nome: "",
   telefone: "",
   documento: "",
@@ -547,6 +542,11 @@ function ValorPresets({ value, onChange, presets = PRESETS_VALOR }) {
 }
 
 function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
+  const { api: machinePayApi, nome: nomeProduto, produto } = useProduto();
+  const doCompactpay = Boolean(cliente?.compactpayId);
+  // Cliente do CompactPay: valores vem de la, a menos que sejam personalizados aqui.
+  const [usarCompactpay, setUsarCompactpay] = useState(doCompactpay && !cliente?.valoresPersonalizados);
+  const mostrarFaixas = produto === "COMPACTPAY" || faixasValidas(cliente).length > 0;
   const [form, setForm] = useState(() =>
     cliente
       ? {
@@ -554,9 +554,14 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
           ...Object.fromEntries(
             Object.entries(cliente).map(([k, v]) => [k, v ?? ""]),
           ),
+          faixas: faixasValidas(cliente).map((f) => ({ ...f })),
         }
       : CLIENTE_VAZIO,
   );
+  const setFaixa = (i, campo, valor) =>
+    setForm((f) => ({ ...f, faixas: f.faixas.map((x, j) => (j === i ? { ...x, [campo]: valor } : x)) }));
+  const addFaixa = () => setForm((f) => ({ ...f, faixas: [...f.faixas, { valor: 30, quantidade: 1, descricao: "" }] }));
+  const delFaixa = (i) => setForm((f) => ({ ...f, faixas: f.faixas.filter((_, j) => j !== i) }));
   // "maquina" (por máquina), "combinado" (valor fixo) ou "sem" (sem mensalidade).
   const [modo, setModo] = useState(() => {
     if (cliente?.semMensalidade) return "sem";
@@ -589,7 +594,8 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
   const totalMaquinas =
     (Number(form.maquinasProprias) || 0) +
     (Number(form.maquinasPlano36) || 0) +
-    (parceriaCobrada ? parceria : 0);
+    (parceriaCobrada ? parceria : 0) +
+    maquinasFaixas(form);
   const mensal = calcularMensal({
     ...form,
     valorFixo: valorCombinado ? form.valorFixo : null,
@@ -608,11 +614,24 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
       maquinasPlano36: Number(form.maquinasPlano36) || 0,
       maquinasOff: Number(form.maquinasOff) || 0,
       maquinasParceria: parceria,
-      valorMensalidade: Number(form.valorMensalidade) || 0,
-      valorMensalidade36: Number(form.valorMensalidade36) || 0,
-      valorMensalidadeParceria: Number(form.valorMensalidadeParceria) || 0,
-      valorFixo: valorCombinado && form.valorFixo !== "" ? Number(form.valorFixo) : null,
-      semMensalidade: modo === "sem",
+      // Usando os valores do CompactPay, os precos nao sao enviados (a sincronizacao manda).
+      ...(usarCompactpay
+        ? { valoresPersonalizados: false }
+        : {
+            valorMensalidade: Number(form.valorMensalidade) || 0,
+            valorMensalidade36: Number(form.valorMensalidade36) || 0,
+            valorMensalidadeParceria: Number(form.valorMensalidadeParceria) || 0,
+            valorFixo: valorCombinado && form.valorFixo !== "" ? Number(form.valorFixo) : null,
+            semMensalidade: modo === "sem",
+            faixas: mostrarFaixas
+              ? faixasValidas(form).map((f) => ({
+                  valor: Number(f.valor) || 0,
+                  quantidade: Number(f.quantidade) || 0,
+                  descricao: f.descricao || null,
+                }))
+              : undefined,
+            ...(doCompactpay ? { valoresPersonalizados: true } : {}),
+          }),
       status: form.status,
       observacoes: form.observacoes,
       agrupadoComId: form.agrupadoComId ? Number(form.agrupadoComId) : null,
@@ -628,7 +647,7 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
   return (
     <Modal
       title={cliente ? "Editar cliente" : "Novo cliente"}
-      subtitle="Cadastro e plano de mensalidade Machine Pay"
+      subtitle={`Cadastro e plano de mensalidade ${nomeProduto}`}
       onClose={onClose}
       width="max-w-2xl"
     >
@@ -691,6 +710,19 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
         </div>
 
         <div className="rounded-xl p-4 space-y-4" style={{ background: "var(--input-bg)" }}>
+          {doCompactpay && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg px-3 py-2 border border-blue-500/20 bg-blue-500/5">
+              <p className="text-xs text-slate-400">
+                {usarCompactpay
+                  ? "Máquinas e valores vêm do CompactPay e são atualizados na sincronização."
+                  : "Valores personalizados no GK: a sincronização só atualiza a quantidade de máquinas."}
+              </p>
+              <div className="flex items-center gap-1 rounded-lg glass p-0.5 shrink-0">
+                <Chip active={usarCompactpay} onClick={() => setUsarCompactpay(true)}>Valores do CompactPay</Chip>
+                <Chip active={!usarCompactpay} onClick={() => setUsarCompactpay(false)}>Personalizado no GK</Chip>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-sm font-semibold text-white">Máquinas e mensalidade</p>
             <div className="flex items-center gap-1 rounded-lg glass p-0.5 overflow-x-auto no-scrollbar whitespace-nowrap max-w-full [&>*]:shrink-0">
@@ -721,7 +753,12 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
             </Campo>
           </div>
 
-          {modo === "sem" ? (
+          {usarCompactpay ? (
+            <p className="text-xs text-slate-500">
+              {formulaMensalidade(cliente)} = <b>{formatCurrency(cliente.valorCalculado)}</b>/mês, conforme o cadastro no CompactPay.
+              Para mudar o valor só aqui no GK, escolha <b>Personalizado no GK</b>.
+            </p>
+          ) : modo === "sem" ? (
             <p className="text-xs text-slate-500">
               O cliente continua no cadastro e as máquinas seguem sendo atualizadas pelo painel, mas ele não gera cobrança nem entra na receita.
             </p>
@@ -749,6 +786,42 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
                   />
                 </Campo>
               )}
+            </div>
+          )}
+
+          {!usarCompactpay && modo === "maquina" && mostrarFaixas && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-slate-400">
+                  Outros valores (máquinas que pagam diferente do valor por máquina)
+                </p>
+                <button type="button" onClick={addFaixa} className="btn-ghost inline-flex items-center gap-1 py-1! text-xs!">
+                  <Plus size={13} /> Adicionar valor
+                </button>
+              </div>
+              {form.faixas.map((f, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_2fr_auto] gap-2 items-center">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={f.valor}
+                    onChange={(e) => setFaixa(i, "valor", e.target.value)}
+                    className="input-base tabular-nums"
+                    title="Valor por máquina"
+                  />
+                  <NumberStepper value={f.quantidade} onChange={(v) => setFaixa(i, "quantidade", v)} />
+                  <input
+                    value={f.descricao || ""}
+                    onChange={(e) => setFaixa(i, "descricao", e.target.value)}
+                    className="input-base"
+                    placeholder="Descrição (ex.: contrato antigo)"
+                  />
+                  <button type="button" onClick={() => delFaixa(i)} title="Remover" className="p-1.5 rounded-lg text-slate-400 hover:bg-red-500/10 hover:text-red-500">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -824,6 +897,7 @@ function ClienteModal({ cliente, clientes = [], onClose, onSaved }) {
 }
 
 function AjusteMaquinasModal({ cliente, competencia, cobrancaAtiva, onClose, onSaved }) {
+  const { api: machinePayApi } = useProduto();
   const [tipo, setTipo] = useState("PROPRIA");
   const [operacao, setOperacao] = useState("ADD");
   const [quantidade, setQuantidade] = useState(1);
@@ -960,8 +1034,9 @@ function AjusteMaquinasModal({ cliente, competencia, cobrancaAtiva, onClose, onS
 }
 
 function HistoricoModal({ clienteId, onClose }) {
+  const { api: machinePayApi, chave: chaveProduto } = useProduto();
   const { data, isLoading } = useQuery({
-    queryKey: ["machinepay", "historico", clienteId],
+    queryKey: [chaveProduto, "historico", clienteId],
     queryFn: () => machinePayApi.historicoCliente(clienteId).then((r) => r.data),
   });
   const [aba, setAba] = useState("cobrancas");
@@ -1123,6 +1198,7 @@ function HistoricoModal({ clienteId, onClose }) {
 }
 
 function ImportarModal({ onClose, onImported }) {
+  const { api: machinePayApi } = useProduto();
   const [arquivo, setArquivo] = useState(null);
   const [linhas, setLinhas] = useState([]);
   const [erro, setErro] = useState("");
@@ -1288,6 +1364,7 @@ function ImportarModal({ onClose, onImported }) {
 // ─── Modais de cobrança ─────────────────────────────────────────────────────
 
 function ReceberModal({ cobrancas, contas, onClose, onDone }) {
+  const { api: machinePayApi } = useProduto();
   const unica = cobrancas.length === 1 ? cobrancas[0] : null;
   const total = cobrancas.reduce((a, c) => a + c.valor, 0);
   const [valor, setValor] = useState(unica ? unica.valor : "");
@@ -1381,6 +1458,7 @@ function ReceberModal({ cobrancas, contas, onClose, onDone }) {
 }
 
 function EditarCobrancaModal({ cobranca, onClose, onDone }) {
+  const { api: machinePayApi } = useProduto();
   const [valor, setValor] = useState(cobranca.valor);
   const [vencimento, setVencimento] = useState(cobranca.vencimento.slice(0, 10));
   const [observacoes, setObservacoes] = useState(cobranca.observacoes || "");
@@ -1447,145 +1525,23 @@ function ConfirmModal({ title, message, confirmLabel = "Confirmar", danger, onCo
   );
 }
 
-// Rodape padrao das mensagens de cobranca (Pix e envio do comprovante).
-const MENSAGEM_RODAPE =
-  "💳 Pagamento via Pix\n" +
-  "Chave CNPJ:\n" +
-  "59996204000177\n\n" +
-  "Após o pagamento, por favor, envie o comprovante por este WhatsApp para confirmarmos a baixa.\n\n" +
-  "Já realizou o pagamento? Basta nos encaminhar o comprovante. ✅\n\n" +
-  "Agradecemos pela parceria! Estamos à disposição para ajudar.\n\n" +
-  "Equipe Financeira | MachinePay";
-
-// Detalhe dos clientes quando a cobranca junta varios (vazio se for um so).
-function detalheItens(itens) {
-  if (!Array.isArray(itens) || itens.length < 2) return "";
-  return (
-    "Cobrança unificada:\n" +
-    itens
-      .map((i) => `   • ${i.nome}: ${i.maquinas} ${i.maquinas === 1 ? "equipamento" : "equipamentos"} · ${formatCurrency(i.valor)}`)
-      .join("\n") +
-    "\n\n"
-  );
+// Mensagens pelos modelos do produto (Configuracoes > Mensagens). O texto e
+// montado pela mesma lib do envio automatico no backend.
+function mensagemCobranca(cobranca, config) {
+  return montarMensagemCobranca(cobranca, config);
 }
 
-function nomeCompetencia(competencia) {
-  const [ano, mes] = String(competencia).split("-").map(Number);
-  return `${MESES[mes - 1].toLowerCase()}/${ano}`;
+function mensagemInadimplencia(cliente, config) {
+  return montarMensagemCliente(cliente, config);
 }
 
-// Meses anteriores em aberto somados na cobranca, agrupados por mes.
-function mesesSomados(cobranca) {
-  const porMes = new Map();
-  for (const item of Array.isArray(cobranca?.anteriores) ? cobranca.anteriores : []) {
-    const atual = porMes.get(item.competencia) || { competencia: item.competencia, valor: 0, vencimento: item.vencimento };
-    atual.valor += Number(item.valor || 0);
-    if (new Date(item.vencimento) < new Date(atual.vencimento)) atual.vencimento = item.vencimento;
-    porMes.set(item.competencia, atual);
-  }
-  return [...porMes.values()].sort((a, b) => a.competencia.localeCompare(b.competencia));
-}
-
-// "Valor total" ou, com meses somados, cada mes em aberto + mensalidade + total.
-function linhasValor(cobranca, valor) {
-  const meses = mesesSomados(cobranca);
-  if (!meses.length) return `▪️ Valor total: ${formatCurrency(valor)}\n`;
-  return (
-    meses.map((m) => `▪️ Em aberto de ${nomeCompetencia(m.competencia)}: ${formatCurrency(m.valor)}\n`).join("") +
-    `▪️ Mensalidade de ${nomeCompetencia(cobranca.competencia)}: ${formatCurrency(cobranca.valorMes ?? valor)}\n` +
-    `▪️ Valor total: ${formatCurrency(valor)}\n`
-  );
-}
-
-// Mensagem para quem ja passou do vencimento (tom de alerta de bloqueio).
-function mensagemAtraso({ dias, maquinas, valor, diaVencimento, itens, cobranca }) {
-  const qtdMeses = mesesSomados(cobranca).length;
-  const abertura = qtdMeses
-    ? `Identificamos ${qtdMeses} ${qtdMeses === 1 ? "mensalidade" : "mensalidades"} em aberto, com ${dias} ${dias === 1 ? "dia" : "dias"} de atraso. Somamos tudo nesta cobrança:\n\n`
-    : `Identificamos que a mensalidade abaixo permanece em aberto, com ${dias} ${dias === 1 ? "dia" : "dias"} de atraso:\n\n`;
-  return (
-    "Olá! Tudo bem?\n\n" +
-    "MachinePay | Financeiro\n\n" +
-    abertura +
-    `▪️ Equipamentos ativos: ${maquinas}\n` +
-    linhasValor(cobranca, valor) +
-    `▪️ Vencimento: dia ${diaVencimento}\n\n` +
-    detalheItens(itens) +
-    "⚠️ Evite o bloqueio do cadastro e a suspensão dos serviços. Pedimos que regularize o pagamento para manter seus equipamentos conectados à MachinePay.\n\n" +
-    "💳 Pagamento via Pix\n" +
-    "Chave CNPJ:\n" +
-    "59996204000177\n\n" +
-    "Após o pagamento, envie o comprovante por este WhatsApp para confirmarmos a baixa.\n\n" +
-    "Já realizou o pagamento? Encaminhe o comprovante para conferirmos. Se precisar de ajuda para regularizar, fale com a nossa equipe.\n\n" +
-    "Equipe Financeira | MachinePay"
-  );
-}
-
-// Dias desde o vencimento (gravado ao meio-dia UTC), contando pelo dia de hoje.
-function diasDeAtraso(vencimento) {
-  const agora = new Date();
-  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12);
-  return Math.max(0, Math.round((hoje - new Date(vencimento).getTime()) / 86400000));
-}
-
-function mensagemCobranca(cobranca) {
-  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36 + (cobranca.maquinasParceria || 0);
-  const dia = new Date(cobranca.vencimento).getUTCDate();
-
-  const somados = mesesSomados(cobranca);
-  if (cobranca.situacao === "ATRASADO" || somados.length) {
-    return mensagemAtraso({
-      // Com meses somados, o atraso conta do vencimento mais antigo em aberto.
-      dias: diasDeAtraso(somados.length ? somados[0].vencimento : cobranca.vencimento),
-      maquinas,
-      valor: cobranca.valor,
-      diaVencimento: dia,
-      itens: cobranca.itens,
-      cobranca,
-    });
-  }
-
-  return (
-    "Olá! Tudo bem? 😊\n\n" +
-    "MachinePay | Financeiro\n\n" +
-    "Segue o lembrete da sua mensalidade:\n\n" +
-    `▪️ Equipamentos ativos: ${maquinas}\n` +
-    linhasValor(cobranca, cobranca.valor) +
-    `▪️ Vencimento: dia ${dia}\n\n` +
-    detalheItens(cobranca.itens) +
-    MENSAGEM_RODAPE
-  );
-}
-
-function mensagemInadimplencia(cliente) {
-  return mensagemAtraso({
-    dias: cliente.diasEmAtraso,
-    maquinas: cliente.totalMaquinas,
-    valor: cliente.valorAtrasado,
-    diaVencimento: cliente.diaVencimento,
-  });
-}
-
-// Mensagem de cobranca com o Pix copia e cola da SumUp no lugar da chave CNPJ.
-function mensagemPixSumup(cobranca, copiaCola) {
-  const maquinas = cobranca.maquinasProprias + cobranca.maquinasPlano36 + (cobranca.maquinasParceria || 0);
-  const dia = new Date(cobranca.vencimento).getUTCDate();
-  return (
-    "Olá! Tudo bem? 😊\n\n" +
-    "MachinePay | Financeiro\n\n" +
-    "Segue a sua mensalidade:\n\n" +
-    `▪️ Equipamentos ativos: ${maquinas}\n` +
-    linhasValor(cobranca, cobranca.valor) +
-    `▪️ Vencimento: dia ${dia}\n\n` +
-    detalheItens(cobranca.itens) +
-    "💳 Pague com o Pix copia e cola abaixo. A baixa é automática, não precisa enviar comprovante:\n\n" +
-    `${copiaCola}\n\n` +
-    "Agradecemos pela parceria! Estamos à disposição para ajudar.\n\n" +
-    "Equipe Financeira | MachinePay"
-  );
+// Pix copia e cola da SumUp junto no texto, no lugar da chave Pix.
+function mensagemPixSumup(cobranca, copiaCola, config) {
+  return montarMensagemCobranca(cobranca, config, { tipo: "sumup_junto", copiaCola });
 }
 
 function PixSumupModal({ cobranca, onClose, onPago, toast }) {
+  const { api: machinePayApi, config: configProduto } = useProduto();
   const [pix, setPix] = useState(null);
   const [qrFalhou, setQrFalhou] = useState(false);
 
@@ -1627,7 +1583,7 @@ function PixSumupModal({ cobranca, onClose, onPago, toast }) {
     }
   }
 
-  const mensagem = pix?.copiaCola ? mensagemPixSumup(cobranca, pix.copiaCola) : "";
+  const mensagem = pix?.copiaCola ? mensagemPixSumup(cobranca, pix.copiaCola, configProduto) : "";
   const wa = mensagem && linkWhatsApp(cobranca.cliente.telefone, mensagem);
   const verificandoManual = verificar.isPending && verificar.variables === "manual";
 
@@ -1740,6 +1696,7 @@ function telefoneValido(tel) {
 const HORAS_REENVIO = 12;
 
 function EnviarWhatsappModal({ cobrancas, sumupAtivo, intervaloSegundos, filaAtual, onClose, onDone }) {
+  const { api: machinePayApi } = useProduto();
   const [reenviar, setReenviar] = useState(false);
   const [limite] = useState(() => Date.now() - HORAS_REENVIO * 60 * 60 * 1000);
 
@@ -1940,6 +1897,7 @@ function StatusWhatsapp({ cobranca }) {
 // ─── Aba: Cobranças ─────────────────────────────────────────────────────────
 
 function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, onImportar }) {
+  const { api: machinePayApi, chave: chaveProduto, config: configProduto } = useProduto();
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState("TODAS");
   const [diaVencimento, setDiaVencimento] = useState(null);
@@ -1952,7 +1910,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   const [pixCobranca, setPixCobranca] = useState(null);
 
   const { data: sumup } = useQuery({
-    queryKey: ["machinepay", "sumup"],
+    queryKey: [chaveProduto, "sumup"],
     queryFn: () => machinePayApi.sumupConfig().then((r) => r.data),
   });
   const sumupAtivo = Boolean(sumup?.ativo);
@@ -1961,7 +1919,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   const conferirPix = useMutation({
     mutationFn: () => machinePayApi.conferirPixPagos().then((r) => r.data),
     onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["machinepay"] });
+      qc.invalidateQueries({ queryKey: [chaveProduto] });
       qc.invalidateQueries({ queryKey: ["movimentacoes"] });
       if (!r.conferidos) {
         toast.show("Nenhum Pix em aberto para verificar");
@@ -1976,14 +1934,14 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   });
 
   const { data: whatsapp } = useQuery({
-    queryKey: ["machinepay", "whatsapp"],
+    queryKey: [chaveProduto, "whatsapp"],
     queryFn: () => machinePayApi.whatsappConfig().then((r) => r.data),
   });
   const whatsappAtivo = Boolean(whatsapp?.ativo);
 
   // Acompanha a fila enquanto houver envio; a lista atualiza junto.
   const { data: filaWa } = useQuery({
-    queryKey: ["machinepay", "whatsapp", "fila"],
+    queryKey: [chaveProduto, "whatsapp", "fila"],
     queryFn: () => machinePayApi.filaWhatsapp().then((r) => r.data),
     enabled: whatsappAtivo,
     refetchInterval: (q) => (q.state.data?.fila || q.state.data?.enviando ? 4000 : false),
@@ -1991,16 +1949,16 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
   const filaAtiva = Boolean(filaWa?.fila || filaWa?.enviando);
   useEffect(() => {
     if (!filaAtiva) return undefined;
-    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["machinepay", "competencia"] }), 8000);
+    const id = setInterval(() => qc.invalidateQueries({ queryKey: [chaveProduto, "competencia"] }), 8000);
     return () => clearInterval(id);
-  }, [filaAtiva, qc]);
+  }, [filaAtiva, qc, chaveProduto]);
 
   const { data: evolucao = [] } = useQuery({
-    queryKey: ["machinepay", "evolucao"],
+    queryKey: [chaveProduto, "evolucao"],
     queryFn: () => machinePayApi.evolucao(6).then((r) => r.data),
   });
 
-  const invalidar = () => qc.invalidateQueries({ queryKey: ["machinepay"] });
+  const invalidar = () => qc.invalidateQueries({ queryKey: [chaveProduto] });
 
   async function copiarMensagem(texto) {
     try {
@@ -2123,7 +2081,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
             danger: true,
             onConfirm: async () => {
               const r = await machinePayApi.cancelarWhatsapp();
-              qc.invalidateQueries({ queryKey: ["machinepay"] });
+              qc.invalidateQueries({ queryKey: [chaveProduto] });
               toast.show(`${r.data.canceladas} envio(s) cancelado(s)`);
             },
           })
@@ -2309,7 +2267,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
               </thead>
               <tbody className="divide-y divide-[var(--border-color)]">
                 {lista.map((c) => {
-                  const wa = linkWhatsApp(c.cliente.telefone, mensagemCobranca(c));
+                  const wa = linkWhatsApp(c.cliente.telefone, mensagemCobranca(c, configProduto));
                   const aberta = c.status === "PENDENTE";
                   return (
                     <tr key={c.id} className={cn("hover:bg-black/[0.02] dark:hover:bg-white/[0.02]", selecionadas.has(c.id) && "bg-emerald-500/5")}>
@@ -2409,7 +2367,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                           {aberta && (
                             <button
                               type="button"
-                              onClick={() => copiarMensagem(mensagemCobranca(c))}
+                              onClick={() => copiarMensagem(mensagemCobranca(c, configProduto))}
                               title="Copiar mensagem de cobrança para enviar manualmente"
                               className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-500/10 hover:text-blue-500"
                             >
@@ -2418,7 +2376,7 @@ function CobrancasTab({ competencia, dados, isLoading, clientes, contas, toast, 
                           )}
                           <Menu
                             items={[
-                              aberta && { label: "Copiar mensagem de cobrança", icon: Copy, onClick: () => copiarMensagem(mensagemCobranca(c)) },
+                              aberta && { label: "Copiar mensagem de cobrança", icon: Copy, onClick: () => copiarMensagem(mensagemCobranca(c, configProduto)) },
                               aberta && { label: "Ajustar valor/vencimento", icon: Pencil, onClick: () => setEditar(c) },
                               { label: "Histórico do cliente", icon: History, onClick: () => setHistorico(c.clienteId) },
                               c.status === "PAGO" && {
@@ -2611,6 +2569,7 @@ function formulaMensalidade(c) {
   const partes = [];
   if (c.maquinasProprias) partes.push(`${c.maquinasProprias} × ${formatCurrency(c.valorMensalidade)}`);
   if (c.maquinasPlano36) partes.push(`${c.maquinasPlano36} × ${formatCurrency(c.valorMensalidade36)}`);
+  for (const f of faixasValidas(c)) partes.push(`${f.quantidade} × ${formatCurrency(f.valor)}`);
   if (c.maquinasParceria && c.valorMensalidadeParceria) {
     partes.push(`${c.maquinasParceria} parceria × ${formatCurrency(c.valorMensalidadeParceria)}`);
   }
@@ -2618,6 +2577,7 @@ function formulaMensalidade(c) {
 }
 
 function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, onImportar }) {
+  const { api: machinePayApi, chave: chaveProduto, config: configProduto } = useProduto();
   const qc = useQueryClient();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState("ATIVO");
@@ -2628,7 +2588,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
   const [confirmar, setConfirmar] = useState(null);
   const [pendente, setPendente] = useState(null);
 
-  const invalidar = () => qc.invalidateQueries({ queryKey: ["machinepay"] });
+  const invalidar = () => qc.invalidateQueries({ queryKey: [chaveProduto] });
 
   // Em modo cadastro nao ha cobranca aberta para atualizar.
   const aplicarNaCompetencia = cobrancaAtiva ? competencia : undefined;
@@ -2896,6 +2856,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                     <div className="flex flex-wrap gap-1 mt-1">
                       <TagMaquina valor={c.maquinasProprias} rotulo="próprias" />
                       <TagMaquina valor={c.maquinasPlano36} rotulo="plano 36" tom="blue" />
+                      <TagMaquina valor={maquinasFaixas(c)} rotulo="outro valor" tom="blue" />
                       <TagMaquina valor={c.maquinasParceria} rotulo="parceria" tom="violet" />
                       <TagMaquina valor={c.maquinasOff} rotulo="off" tom="amber" />
                       <TagMaquina valor={semVenda30(c)} rotulo="sem venda 30d+" tom="amber" />
@@ -2907,6 +2868,11 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                     <p className={cn("text-[11px] tabular-nums", c.semMensalidade ? "text-violet-600 dark:text-violet-300" : c.valorFixo !== null ? "text-amber-600 dark:text-amber-300" : "text-slate-500")}>
                       {formulaMensalidade(c)}
                     </p>
+                    {c.compactpayId && c.valoresPersonalizados && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-300" title="Valor editado no GK: a sincronização com o CompactPay não muda o valor">
+                        personalizado no GK
+                      </p>
+                    )}
                   </td>
                   {cobrancaAtiva ? (
                     <>
@@ -2950,7 +2916,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
                           cobrancaAtiva && c.telefone && c.valorAtrasado > 0 && {
                             label: "Cobrar no WhatsApp",
                             icon: MessageCircle,
-                            onClick: () => window.open(linkWhatsApp(c.telefone, mensagemInadimplencia(c)), "_blank"),
+                            onClick: () => window.open(linkWhatsApp(c.telefone, mensagemInadimplencia(c, configProduto)), "_blank"),
                           },
                           c.status !== "SUSPENSO" && {
                             label: "Suspender",
@@ -3043,6 +3009,7 @@ function ClientesTab({ clientes, isLoading, competencia, cobrancaAtiva, toast, o
 // ─── Aba: Inadimplência ─────────────────────────────────────────────────────
 
 function InadimplenciaTab({ clientes, toast }) {
+  const { config: configProduto } = useProduto();
   async function copiarMensagem(texto) {
     try {
       await copiarTexto(texto);
@@ -3108,7 +3075,7 @@ function InadimplenciaTab({ clientes, toast }) {
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
             {devedores.map((c) => {
-              const wa = linkWhatsApp(c.telefone, mensagemInadimplencia(c));
+              const wa = linkWhatsApp(c.telefone, mensagemInadimplencia(c, configProduto));
               const grave = c.diasEmAtraso > 30;
               return (
                 <tr key={c.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
@@ -3141,7 +3108,7 @@ function InadimplenciaTab({ clientes, toast }) {
                       )}
                       <button
                         type="button"
-                        onClick={() => copiarMensagem(mensagemInadimplencia(c))}
+                        onClick={() => copiarMensagem(mensagemInadimplencia(c, configProduto))}
                         title="Copiar mensagem para enviar manualmente"
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20"
                       >
@@ -3165,13 +3132,16 @@ function InadimplenciaTab({ clientes, toast }) {
 
 // ─── Página ─────────────────────────────────────────────────────────────────
 
-// Busca tudo no painel Machine Pay (clientes, ON/OFF e vendas dos ultimos 30
-// dias). Roda em segundo plano no backend; aqui so acompanhamos o status.
+// Busca tudo no sistema de origem: painel Machine Pay (clientes, ON/OFF e
+// vendas dos ultimos 30 dias) ou CompactPay (clientes, maquinas e valores).
+// Roda em segundo plano no backend; aqui so acompanhamos o status.
 function AtualizarPainelButton({ toast }) {
+  const { api: machinePayApi, chave: chaveProduto, nome: nomeProduto, produto } = useProduto();
+  const compactpay = produto === "COMPACTPAY";
   const qc = useQueryClient();
   const [disparado, setDisparado] = useState(false);
   const { data: status } = useQuery({
-    queryKey: ["machinepay", "painel-status"],
+    queryKey: [chaveProduto, "painel-status"],
     queryFn: () => machinePayApi.statusPainel().then((r) => r.data),
     refetchInterval: 60000,
   });
@@ -3193,16 +3163,19 @@ function AtualizarPainelButton({ toast }) {
         atual.emAndamento ||
         !atual.ultima ||
         atual.ultima.em === anterior ||
-        (atual.ultima.ok && !atual.ultima.verificouVendas)
+        (!compactpay && atual.ultima.ok && !atual.ultima.verificouVendas)
       );
 
-      qc.setQueryData(["machinepay", "painel-status"], atual);
-      await qc.invalidateQueries({ queryKey: ["machinepay"] });
+      qc.setQueryData([chaveProduto, "painel-status"], atual);
+      await qc.invalidateQueries({ queryKey: [chaveProduto] });
       const u = atual.ultima;
       toast.show(
-        u.ok
-          ? `Painel atualizado: ${u.clientesMachinePay} clientes · ${u.maquinas.off} off · ${u.maquinas.onInativas - u.maquinas.onInativas60} sem venda 30d+ · ${u.maquinas.onInativas60} sem venda 60d+`
-          : `Falha ao atualizar: ${u.erro}`,
+        !u.ok
+          ? `Falha ao atualizar: ${u.erro}`
+          : compactpay
+            ? `CompactPay atualizado: ${u.clientes} clientes · ${u.criados} novos · ${u.maquinas} máquinas` +
+              (u.inativados ? ` · ${u.inativados} inativados` : "")
+            : `Painel atualizado: ${u.clientesMachinePay} clientes · ${u.maquinas.off} off · ${u.maquinas.onInativas - u.maquinas.onInativas60} sem venda 30d+ · ${u.maquinas.onInativas60} sem venda 60d+`,
         { error: !u.ok },
       );
     } catch (e) {
@@ -3213,28 +3186,34 @@ function AtualizarPainelButton({ toast }) {
   }
 
   const ultima = status.ultimaVerificacaoVendas || status.ultima?.em;
+  const automatica = compactpay
+    ? status.intervaloMinutos
+      ? `Automática a cada ${status.intervaloMinutos} min.`
+      : "Sincronização automática desligada."
+    : `Automática todo dia às ${status.horaVerificacaoVendas}h.`;
   return (
     <button
       onClick={atualizar}
       disabled={emAndamento || disparado}
       title={
         ultima
-          ? `Última verificação: ${new Date(ultima).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}. Automática todo dia às ${status.horaVerificacaoVendas}h.`
-          : `Automática todo dia às ${status.horaVerificacaoVendas}h`
+          ? `Última verificação: ${new Date(ultima).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}. ${automatica}`
+          : automatica
       }
       className="btn-ghost inline-flex items-center gap-2 disabled:opacity-70"
     >
       <RotateCcw size={15} className={cn((emAndamento || disparado) && "animate-spin")} />
-      {emAndamento || disparado ? "Buscando na Machine Pay..." : "Atualizar"}
+      {emAndamento || disparado ? `Buscando no ${nomeProduto}...` : "Atualizar"}
     </button>
   );
 }
 
 // ─── Aba: SumUp (Pix com baixa automática) ──────────────────────────────────
 
-function SumupTab({ contas, toast }) {
+export function SumupTab({ contas, toast }) {
+  const { api: machinePayApi, chave: chaveProduto } = useProduto();
   const { data: config, isLoading, error } = useQuery({
-    queryKey: ["machinepay", "sumup"],
+    queryKey: [chaveProduto, "sumup"],
     queryFn: () => machinePayApi.sumupConfig().then((r) => r.data),
   });
 
@@ -3250,6 +3229,7 @@ function SumupTab({ contas, toast }) {
 }
 
 function SumupForm({ config, contas, toast }) {
+  const { api: machinePayApi, chave: chaveProduto } = useProduto();
   const qc = useQueryClient();
   // A chave da API nunca volta inteira do servidor: o campo comeca vazio.
   const [form, setForm] = useState(() => ({
@@ -3277,7 +3257,7 @@ function SumupForm({ config, contas, toast }) {
         })
         .then((r) => r.data),
     onSuccess: (data) => {
-      qc.setQueryData(["machinepay", "sumup"], data);
+      qc.setQueryData([chaveProduto, "sumup"], data);
       setForm((f) => ({ ...f, apiKey: "", merchantCode: data.merchantCode || "" }));
       toast.show("Configuração da SumUp salva");
     },
@@ -3288,7 +3268,7 @@ function SumupForm({ config, contas, toast }) {
     mutationFn: () => machinePayApi.testarSumup().then((r) => r.data),
     onSuccess: (data) => {
       setTeste(data);
-      qc.invalidateQueries({ queryKey: ["machinepay", "sumup"] });
+      qc.invalidateQueries({ queryKey: [chaveProduto, "sumup"] });
       setForm((f) => ({ ...f, merchantCode: f.merchantCode || data.merchantCode || "" }));
     },
     onError: (e) => setTeste({ erro: erroApi(e) }),
@@ -3451,9 +3431,10 @@ const ESTADO_WHATSAPP = {
   erro: { label: "Sem resposta da Evolution API", cls: "bg-red-500/10 text-red-600 dark:text-red-300 border-red-500/30" },
 };
 
-function WhatsappCard({ toast }) {
+export function WhatsappCard({ toast }) {
+  const { api: machinePayApi, chave: chaveProduto } = useProduto();
   const { data: config, isLoading, error } = useQuery({
-    queryKey: ["machinepay", "whatsapp"],
+    queryKey: [chaveProduto, "whatsapp"],
     queryFn: () => machinePayApi.whatsappConfig().then((r) => r.data),
   });
 
@@ -3469,6 +3450,7 @@ function WhatsappCard({ toast }) {
 }
 
 function WhatsappForm({ config, toast }) {
+  const { api: machinePayApi, chave: chaveProduto } = useProduto();
   const qc = useQueryClient();
   const [form, setForm] = useState(() => ({
     ativo: config.ativo,
@@ -3480,7 +3462,7 @@ function WhatsappForm({ config, toast }) {
   const [qrGerado, setQr] = useState(null);
 
   const conexao = useQuery({
-    queryKey: ["machinepay", "whatsapp", "conexao"],
+    queryKey: [chaveProduto, "whatsapp", "conexao"],
     queryFn: () => machinePayApi.whatsappConexao().then((r) => r.data),
     // Enquanto o QR esta na tela, confere a cada 3s se o numero conectou.
     refetchInterval: (q) => (qrGerado && q.state.data?.estado !== "open" ? 3000 : false),
@@ -3503,8 +3485,8 @@ function WhatsappForm({ config, toast }) {
         })
         .then((r) => r.data),
     onSuccess: (data) => {
-      qc.setQueryData(["machinepay", "whatsapp"], data);
-      qc.invalidateQueries({ queryKey: ["machinepay", "whatsapp", "conexao"] });
+      qc.setQueryData([chaveProduto, "whatsapp"], data);
+      qc.invalidateQueries({ queryKey: [chaveProduto, "whatsapp", "conexao"] });
       setForm((f) => ({ ...f, apiKey: "" }));
       toast.show("Configuração do WhatsApp salva");
     },
@@ -3516,7 +3498,7 @@ function WhatsappForm({ config, toast }) {
     onSuccess: (data) => {
       if (data.estado === "open") {
         toast.show("Este número já está conectado");
-        qc.invalidateQueries({ queryKey: ["machinepay", "whatsapp", "conexao"] });
+        qc.invalidateQueries({ queryKey: [chaveProduto, "whatsapp", "conexao"] });
       } else {
         setQr(data);
       }
@@ -3621,16 +3603,8 @@ function WhatsappForm({ config, toast }) {
   );
 }
 
-function IntegracoesTab({ contas, toast }) {
-  return (
-    <div className="space-y-8">
-      <SumupTab contas={contas} toast={toast} />
-      <WhatsappCard toast={toast} />
-    </div>
-  );
-}
-
-export default function MachinePayPage() {
+function ProdutoPage() {
+  const { api: machinePayApi, chave: chaveProduto, nome: nomeProduto } = useProduto();
   const qc = useQueryClient();
   const toast = useToast();
   const [abaEscolhida, setAba] = useState("cobrancas");
@@ -3639,37 +3613,36 @@ export default function MachinePayPage() {
   const [confirmarCobranca, setConfirmarCobranca] = useState(null);
 
   const configQuery = useQuery({
-    queryKey: ["machinepay", "config"],
+    queryKey: [chaveProduto, "config"],
     queryFn: () => machinePayApi.config().then((r) => r.data),
   });
   const cobrancaAtiva = Boolean(configQuery.data?.cobrancaAtiva);
 
   const clientesQuery = useQuery({
-    queryKey: ["machinepay", "clientes"],
+    queryKey: [chaveProduto, "clientes"],
     queryFn: () => machinePayApi.listarClientes().then((r) => r.data),
   });
   const competenciaQuery = useQuery({
-    queryKey: ["machinepay", "competencia", competencia],
+    queryKey: [chaveProduto, "competencia", competencia],
     queryFn: () => machinePayApi.competencia(competencia).then((r) => r.data),
     enabled: cobrancaAtiva,
   });
   const { data: contas = [] } = useQuery({
     queryKey: ["contas"],
     queryFn: () => cadastrosApi.listarContas().then((r) => r.data),
-    enabled: cobrancaAtiva || abaEscolhida === "integracoes",
+    enabled: cobrancaAtiva,
   });
 
   const clientes = clientesQuery.data ?? [];
   const devendo = clientes.filter((c) => c.valorAtrasado > 0).length;
   const erro = clientesQuery.error || competenciaQuery.error || configQuery.error;
-  // Em modo cadastro so existem a lista de clientes e as integracoes.
-  const aba = cobrancaAtiva || abaEscolhida === "integracoes" ? abaEscolhida : "clientes";
+  // Em modo cadastro so existe a lista de clientes.
+  const aba = cobrancaAtiva ? abaEscolhida : "clientes";
 
   const abas = [
     cobrancaAtiva && { key: "cobrancas", label: "Cobranças do mês", icon: CircleDollarSign },
     { key: "clientes", label: "Clientes", icon: Users, count: clientes.length },
     cobrancaAtiva && { key: "inadimplencia", label: "Inadimplência", icon: AlertTriangle, count: devendo || undefined },
-    { key: "integracoes", label: "Integrações", icon: KeyRound },
   ].filter(Boolean);
 
   function alternarCobranca(ativar) {
@@ -3677,12 +3650,12 @@ export default function MachinePayPage() {
       title: ativar ? "Ativar a cobrança?" : "Desativar a cobrança?",
       message: ativar
         ? "As abas Cobranças do mês e Inadimplência passam a aparecer e será possível gerar as mensalidades do mês a partir do cadastro de cada cliente. Nenhuma cobrança é criada automaticamente: você ainda precisa clicar em Gerar cobranças."
-        : "O Machine Pay volta a ser apenas cadastro de clientes e máquinas. As cobranças já geradas ficam guardadas e reaparecem quando a cobrança for ativada de novo.",
+        : `O ${nomeProduto} volta a ser apenas cadastro de clientes e máquinas. As cobranças já geradas ficam guardadas e reaparecem quando a cobrança for ativada de novo.`,
       confirmLabel: ativar ? "Ativar cobrança" : "Desativar",
       danger: !ativar,
       onConfirm: async () => {
         await machinePayApi.salvarConfig({ cobrancaAtiva: ativar });
-        await qc.invalidateQueries({ queryKey: ["machinepay"] });
+        await qc.invalidateQueries({ queryKey: [chaveProduto] });
         if (ativar) setAba("cobrancas");
         toast.show(ativar ? "Cobrança ativada" : "Cobrança desativada · modo cadastro");
       },
@@ -3693,7 +3666,7 @@ export default function MachinePayPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-white">Machine Pay</h1>
+          <h1 className="text-xl font-bold text-white">{nomeProduto}</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {cobrancaAtiva
               ? "Clientes, máquinas e mensalidades, com controle de pagamento"
@@ -3785,7 +3758,7 @@ export default function MachinePayPage() {
 
       {erro && (
         <div className="rounded-xl p-4 border border-red-500/30 bg-red-500/5 text-sm text-red-500">
-          Não foi possível carregar os dados do Machine Pay: {erroApi(erro)}
+          Não foi possível carregar os dados do {nomeProduto}: {erroApi(erro)}
         </div>
       )}
 
@@ -3811,14 +3784,13 @@ export default function MachinePayPage() {
         />
       )}
       {aba === "inadimplencia" && <InadimplenciaTab clientes={clientes} toast={toast} />}
-      {aba === "integracoes" && <IntegracoesTab contas={contas} toast={toast} />}
 
       {importar && (
         <ImportarModal
           onClose={() => setImportar(false)}
           onImported={(r) => {
             setImportar(false);
-            qc.invalidateQueries({ queryKey: ["machinepay"] });
+            qc.invalidateQueries({ queryKey: [chaveProduto] });
             toast.show(`${r.criados} clientes criados · ${r.atualizados} atualizados`);
             setAba("clientes");
           }}
@@ -3827,5 +3799,19 @@ export default function MachinePayPage() {
       {confirmarCobranca && <ConfirmModal {...confirmarCobranca} onClose={() => setConfirmarCobranca(null)} />}
       {toast.node}
     </div>
+  );
+}
+
+export default function MachinePayPage({ produto = "MACHINEPAY" }) {
+  const info = PRODUTOS[produto] || PRODUTOS.MACHINEPAY;
+  const { data: config } = useQuery({
+    queryKey: [info.chave, "config"],
+    queryFn: () => info.api.config().then((r) => r.data),
+  });
+  const valor = useMemo(() => ({ ...info, config: config || {} }), [info, config]);
+  return (
+    <ProdutoContext.Provider value={valor}>
+      <ProdutoPage />
+    </ProdutoContext.Provider>
   );
 }
